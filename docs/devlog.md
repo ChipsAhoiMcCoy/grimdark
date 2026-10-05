@@ -1163,3 +1163,22 @@ CLAUDE.md "Traps and lessons"; the mechanism docs are `docs/*.md`.
   static_assert on the counts. `list_rows()` capped rows at 8 cells / 256 rows: now 16 / 1024.
 - Open: the right panel's four tiles (+0x718, exe+0x30d148), the refresh button's exact action, whether the friends
   list selection drives Join Game's enabled state, the difficulty / game-mode buttons on the Host tab, the Network screen.
+- Same day, first in-game run of the screen (VS 2022 Build Tools installed; `inject.ps1 -Launch -NoBuild`, unfocused,
+  muted): "Multiplayer", "Join Multiplayer, tab, selected, 1 of 2"; the 11 filter controls with values; "89 Games / 165
+  Players"; rows such as "danny, 2 of 4 players, Ascendant, Grim Dawn, level 1 to 200, password, ping 116, 4 of 89";
+  landing on that row set list+0x19c to 3; friends "name, Online, 1 of 18"; "characters, list, Chips, level 7 Occultist,
+  selected"; greyed buttons say "disabled". Host tab (via `/action?key=ui.tabNext`): the seven settings with values; Max.
+  Players Left/Right 4 -> 3 -> 4 in the game; Enter on Game Name, "x" typed and echoed into the game's box, Backspace
+  read back "r", Enter ended. Escape left for the main menu. Nothing joined or hosted.
+- Fixed from that run: Ctrl+Tab switched tabs silently (focus sat on Back, shared by both tabs) -- it now lands on the new
+  tab and speaks "Host Multiplayer, tab". `exe_ui::app()` found the app object only through the main menu, so a mod
+  loaded (hot reload) on the Multiplayer or Options screen saw app state 0 and fell to "unsupported": it now falls back
+  to the UI root [main_obj+0x88] when its vtable is exe+0x30c958 (read live in state 6).
+- The dev `/key` route did not deliver Shift / Ctrl with Tab here (Shift+Tab and Ctrl+Tab did nothing; the same actions
+  through `/action` worked) -- use `/action?key=ui.prev|ui.tabNext` for chords in the menus too.
+- A second hot reload on this screen crashed the game ~3 s after the new DLL loaded: game thread, `frame_tick ->
+  app::tick -> InputManager::tick -> InputAction::held` (the KeySource virtual call). None of the screen's code is on
+  that path and a fresh launch of the same build ran the whole test above clean, so it is filed as the hot-reload hazard
+  (CLAUDE.md "Hot reload crashes"), not fixed. Log kept as the session's crash_reload2.log.
+- Cancel on the "Building server list" box, 160 ms after opening (no game in yet), returned to the main menu. The
+  game's own Cancel; the message's "view partial server list" did not happen in that case.

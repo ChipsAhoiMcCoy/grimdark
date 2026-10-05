@@ -146,7 +146,8 @@ or Escape ends -- Max. Players, Auto-Party / Instanced Loot / PVP); then the cha
 game mode, Back. **Landing on a server or a friend selects it in the game** (a single click); **Enter on a server joins
 it** (the game's double click: select + Start, with the game's own checks and error boxes); Enter on a friend presses
 Join Game. Start on the Join tab joins the server last landed on, on the Host tab hosts. The "Building server list"
-box is read as a message (Escape = its Cancel, which shows the partial list).
+box is read as a message; Escape presses its Cancel, which is the game's own (pressed 160 ms after opening, before any
+game had arrived, it went back to the main menu -- observed once, 2026-10-04).
 
 ## The in-world windows (2026-08-22, first pass)
 Each game window is a screen of the mod while the game shows it (Ctrl+C/I inventory, Ctrl+N skills, Ctrl+Q

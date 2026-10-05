@@ -19,6 +19,7 @@ constexpr uintptr_t kMainObj = 0x3ceef8;        // the exe's application object 
 constexpr uintptr_t kButtonA1 = 0x30c018;       // framework A button vtable, HandleMouseEvent exe+0xa01d0
 constexpr uintptr_t kButtonA2 = 0x30bf40;       // framework A button vtable (text-width variant), exe+0xa22d0
 constexpr uintptr_t kMenuManagerVt = 0x30cca0;  // main-menu manager (ctor exe+0xd4fc0)
+constexpr uintptr_t kAppVt = 0x30c958;          // the exe's Display subclass = the UI root DisplayWidget (mouse handler exe+0xbef10)
 constexpr uintptr_t kTextA = 0x30c5e8;          // framework A static text (draw exe+0xb1ba0: string +0xc0, wrap width +0xe0)
 constexpr uintptr_t kEditA = 0x30d588;          // framework A edit box (draw exe+0xee730: string +0x238, caret +0x21c; keys exe+0xedc80)
 constexpr uintptr_t kSliderA = 0x30d4c0;        // options slider (ctor exe+0xeac40; thumb math exe+0xebb46)
@@ -168,6 +169,12 @@ void* app() {
   void* mm = menu_manager_obj();
   void* a = rdp(mm, 0x118);
   if (a && rdp(a, off::kApp_MainMenu) == mm) g_app = a;
+  // No main menu to walk from (a load or hot reload on the Options or Multiplayer screen): the app IS the UI root
+  // DisplayWidget [main_obj+0x88], recognised by its own vtable (measured live 2026-10-04 in app state 6).
+  if (!g_app) {
+    void* root = rdp(main_obj(), off::kMainObj_UiRoot);
+    if (vtable_rva_of(root) == rva::kAppVt) g_app = root;
+  }
   return g_app;
 }
 void* dialog_manager() { void* ge = world::game_engine(); return ge && g_dm.GetDialogManager ? g_dm.GetDialogManager(ge) : nullptr; }

@@ -131,9 +131,15 @@ class MultiplayerMenuScreen : public Screen {
   bool switch_tab(int) override {
     MultiplayerScreen s = exe_ui::multiplayer_screen();
     if (!s) return false;
-    WidgetA other = s.member(s.hosting() ? MultiplayerScreen::kJoinTab : MultiplayerScreen::kHostTab);
+    bool to_host = !s.hosting();
+    WidgetA other = s.member(to_host ? MultiplayerScreen::kHostTab : MultiplayerScreen::kJoinTab);
     if (!other) return false;
     other.activate();
+    // Land on the new tab (focus could otherwise sit on Back, which both tabs share, and nothing would be spoken).
+    if (core::GraphNavigator* nav = app::navigator()) nav->focus_node(ControlId::structural(to_host ? "mp.host" : "mp.join"), false);
+    MessageBuilder m;
+    strings::push_control(m, other.caption(), strings::kTab, false, false);
+    speech::speak(m.build(), true);
     return true;
   }
   void on_push() override { edit_.stop(); }
