@@ -266,6 +266,7 @@ inline constexpr std::string_view kMultiplayerScreen = "Multiplayer";
 inline constexpr std::string_view kFriends = "friends";
 inline constexpr std::string_view kServers = "servers";
 inline constexpr std::string_view kHostSettings = "host settings";
+inline constexpr std::string_view kNetwork = "network";   // the Internet / LAN pair, one choice
 inline constexpr std::string_view kRefresh = "refresh";   // the filter bar's icon button (no caption)
 // The filter bar's drop-downs after Type carry no label of their own (their first entry names the filter: "All Servers",
 // "Any Difficulty" ...): ours, in the game's tree order.

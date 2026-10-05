@@ -28,6 +28,7 @@ constexpr uintptr_t kListA = 0x30c530;          // key-binding table (ctor exe+0
 constexpr uintptr_t kRowListA = 0x30c6a0;       // the multiplayer screen's selectable row lists (HandleMouseEvent exe+0xb5090; same rows layout as kListA)
 constexpr uintptr_t kMultiplayerScreenVt = 0x30d308;  // app state 6 (measured live 2026-10-04)
 constexpr uintptr_t kProgressLayerVt = 0x30baa8;      // the multiplayer screen's modal layer ("Building server list" + Cancel): a child of that screen, not of the root
+constexpr uintptr_t kPasswordLayerVt = 0x30bb98;      // the join password prompt's layer (Ok, text, Cancel, edit, "Password"; measured live 2026-10-05)
 constexpr uintptr_t kOptionsScreenVt = 0x30cad0, kOptionsPanelVt = 0x30d650, kOptionsPageVt = 0x30cbb8;  // measured live 2026-08-22
 constexpr uintptr_t kConvWindowVt = 0x3157a8, kConvRowVt = 0x315710;  // ctors exe+0x16e9a0 / exe+0x16d9b0
 constexpr uintptr_t kPopupLayerVt = 0x30bd80;   // modal layer at the root holding a popup window (measured live: the name-exists box)
@@ -304,21 +305,48 @@ WidgetA popup_window_in(WidgetA layer) {
   for (WidgetA w : layer.children()) if (w.vtable_rva() == rva::kPopupWindowVt && w.active()) return w;
   return {};
 }
+bool is_popup_layer(WidgetA layer) {
+  uintptr_t v = layer.vtable_rva();
+  return v == rva::kPopupLayerVt || v == rva::kProgressLayerVt || v == rva::kPasswordLayerVt;
+}
 }  // namespace
 Popup popup() {
   for (WidgetA c : root().children()) {
     if (!c.active()) continue;
-    if (c.vtable_rva() == rva::kPopupLayerVt) { if (WidgetA w = popup_window_in(c)) return {w}; continue; }
-    // The multiplayer screen keeps its own modal layer among its children ("Building server list" + Cancel).
+    if (is_popup_layer(c)) { if (WidgetA w = popup_window_in(c)) return {w}; continue; }
+    // The multiplayer screen keeps its own modal layers among its children (measured live 2026-10-04/05): the progress
+    // layer ("Building server list" + Cancel), ordinary popup layers (a join refused: "incompatible game mode" + Ok) and
+    // the password prompt.
     if (c.vtable_rva() == rva::kMultiplayerScreenVt)
       for (WidgetA layer : c.children())
-        if (layer.vtable_rva() == rva::kProgressLayerVt && layer.active()) if (WidgetA w = popup_window_in(layer)) return {w};
+        if (is_popup_layer(layer) && layer.active())
+          if (WidgetA w = popup_window_in(layer)) return {w};
   }
+  return {};
+}
+WidgetA Popup::edit() const {
+  for (WidgetA e : window.edits()) if (e.active()) return e;
+  return {};
+}
+// The text widget on the edit box's row (the prompt draws "Password" left of its box, AFTER it in tree order).
+WidgetA Popup::edit_label() const {
+  WidgetA e = edit();
+  if (!e) return {};
+  Rect r = e.rect();
+  for (WidgetA t : window.texts())
+    if (t.active() && t.rect().y >= r.y && t.rect().y <= r.y + r.h && !t.text().empty()) return t;
   return {};
 }
 std::string Popup::text() const {
   std::string out;
-  for (WidgetA t : window.texts()) { if (!t.active()) continue; std::string s = t.text(); if (s.empty()) continue; if (!out.empty()) out += ' '; out += s; }
+  WidgetA label = edit_label();
+  for (WidgetA t : window.texts()) {
+    if (!t.active() || t == label) continue;
+    std::string s = t.text();
+    if (s.empty()) continue;
+    if (!out.empty()) out += ' ';
+    out += s;
+  }
   return out;
 }
 

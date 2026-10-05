@@ -1182,3 +1182,31 @@ CLAUDE.md "Traps and lessons"; the mechanism docs are `docs/*.md`.
   (CLAUDE.md "Hot reload crashes"), not fixed. Log kept as the session's crash_reload2.log.
 - Cancel on the "Building server list" box, 160 ms after opening (no game in yet), returned to the main menu. The
   game's own Cancel; the message's "view partial server list" did not happen in that case.
+
+## 2026-10-05 -- Multiplayer: the windows' tab strip, the password prompt, refused joins
+- User report: Enter on a friend's game brought up a password box and the mod said "screen not supported", nothing else;
+  and the screen's tabs felt off next to the other screens. Run in the dev loop (unfocused, muted, user approved).
+- Tabs: Join / Host now follow `window_base.h add_tabs` -- one row, landing opens the tab (on_focus activates the
+  unpressed toggle), no "selected" part, Ctrl+Tab lands on the opened tab and says "Host Multiplayer, tab". Internet / LAN
+  left the tab stop: one "network" combo row at the head of each tab's first stop. The screen re-enters after every
+  popup with fresh nav state (popped, not kept), so on_push seats focus itself: on the control focused when a popup
+  covered it (`on_unfocus` with `exe_ui::popup()` up), else on the OPEN tab. Verified: "Join Multiplayer, tab, 1 of 2";
+  Right opened Host; refresh -> "Building server list" -> back on "refresh, button"; Ctrl+Tab both ways via /action.
+- Popups inside the multiplayer screen come in three layer classes: progress exe+0x30baa8 (known), the ordinary popup
+  layer exe+0x30bd80 (a refused join: "incompatible game mode", Ok) and the password prompt exe+0x30bb98
+  (docs/exe-ui-layout.md "Multiplayer"). `exe_ui::popup()` only knew the first, so the other two were silent with the
+  multiplayer screen still current. Now all three, at the root or inside the screen (the friend path's "screen not
+  supported" suggests the prompt was not inside the screen there -- NOT verified, the friend was offline).
+  `Popup::edit()` / `edit_label()`; the message box screen adds "Password, edit" after the message and runs the shared
+  `EditSession`. Verified on the live prompt: "A password is required to join this game., 1 of 2", Down "Password,
+  edit, empty, 2 of 2", Enter "editing", typed a/b/1 echoed into the game's box, Backspace read back "b".
+- Most listed games refused with tagMenuError21a, "Server's mode: """ (Divine, mandas); 111111 passed and prompted.
+  Our Enter path calls the same exe+0xe6ed0 the double click does on the same +0x19c index, so the refusals look real.
+- TWO JOIN ATTEMPTS HAPPENED BY MISTAKE, both refused: a test loop pressed the prompt's Ok (empty password), and later a
+  synthetic `gd.py key enter` meant to end the edit session reached the GAME too (CLAUDE.md: synthetic keys reach both)
+  and the prompt took it as Ok (password "ab"). Never press Enter with `/key` on this prompt; use `/action?key=...`.
+- Both refused joins then CRASHED the game the same way, right as the screen came back ("Network problems detected." ->
+  "Building server list"): game thread, write to 0x8 in RtlEnterCriticalSection <- `RegionLoader::Update+0x105` <-
+  exe+0xbaf1d <- `Display::Update` <- our DisplayUpdate hook (a plain forward). A second Game.dll access violation
+  (Game.dll+0x161b5) followed on another thread. Whether vanilla does this after a refused join (window minimized the
+  first time, unfocused both times) is open; no third join was tried. Logs kept as crash_pwjoin.log / crash_pwjoin2.log.

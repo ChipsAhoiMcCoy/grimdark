@@ -1,6 +1,7 @@
 #include "screens/multiplayer.h"
 #include <format>
 #include <iterator>
+#include <optional>
 #include <utility>
 #include "core/graph_builder.h"
 #include "core/message_builder.h"
@@ -59,15 +60,38 @@ void press(WidgetA w) {
   w.activate();
 }
 
+// Join / Host as the windows' tab strip (window_base.h add_tabs): landing on a tab OPENS it, so the tab under the cursor is
+// always the open one and no "selected" is spoken. Enter re-selects (a no-op on the open tab: the game keeps one of the
+// pair pressed, and pressing the open one again would flip it off).
 NodeVtablePtr tab_item(WidgetA t) {
   std::string label = t.caption();
-  bool selected = t.pressed();
   auto v = std::make_shared<NodeVtable>();
   v->control_type = &kTabType;
-  v->announcements = {NodeAnnouncement([label] { return label; }, false, announcement_kinds::kLabel),
-                      NodeAnnouncement([selected] { return selected ? std::string(strings::kSelected) : std::string(); }, true, announcement_kinds::kSelected)};
-  v->on_activate = [t, selected] { if (!selected) t.activate(); };   // a pressed mode toggle would flip off: the game keeps one of the pair on
-  v->state_text = [t] { return std::string(t.pressed() ? strings::kSelected : strings::kNotSelected); };
+  v->announcements = {NodeAnnouncement([label] { return label; }, false, announcement_kinds::kLabel)};
+  v->on_focus = [t] { if (!t.pressed()) t.activate(); };
+  v->on_activate = [t] { if (!t.pressed()) t.activate(); };
+  return v;
+}
+// Internet / LAN: a two-way choice, not a tab strip -- one drop-down-like row ("network, Internet"), Left/Right switch.
+std::string network_value(WidgetA internet, WidgetA lan) {
+  return textcap::speakable(lan.pressed() ? lan.caption() : internet.caption());
+}
+NodeVtablePtr network_item(WidgetA internet, WidgetA lan) {
+  std::string value = network_value(internet, lan);
+  auto v = std::make_shared<NodeVtable>();
+  v->control_type = &kComboType;
+  v->announcements = {NodeAnnouncement([] { return std::string(strings::kNetwork); }, false, announcement_kinds::kLabel),
+                      NodeAnnouncement([value] { return value; }, true, announcement_kinds::kValue)};
+  v->on_adjust = [internet, lan](int sign, bool) {
+    WidgetA to = sign > 0 ? lan : internet;
+    if (to && !to.pressed()) to.activate();
+  };
+  v->state_text = [internet, lan] {
+    MessageBuilder m;
+    m.fragment(network_value(internet, lan));
+    strings::push_position(m, lan.pressed() ? 2 : 1, 2);
+    return m.build();
+  };
   return v;
 }
 NodeVtablePtr checkbox_item(WidgetA c) {
@@ -127,7 +151,7 @@ class MultiplayerMenuScreen : public Screen {
   std::vector<ScreenAction> actions() override {
     return {{std::string(action_ids::Back), [] { MultiplayerScreen s = exe_ui::multiplayer_screen(); if (s) press(s.member(MultiplayerScreen::kBack)); }}};
   }
-  // Ctrl+Tab: Join <-> Host (the pair's other tab; the game keeps exactly one pressed).
+  // Ctrl+Tab / Ctrl+Shift+Tab: Join <-> Host from anywhere, as in the windows: land on the opened tab and say "label, tab".
   bool switch_tab(int) override {
     MultiplayerScreen s = exe_ui::multiplayer_screen();
     if (!s) return false;
@@ -135,29 +159,40 @@ class MultiplayerMenuScreen : public Screen {
     WidgetA other = s.member(to_host ? MultiplayerScreen::kHostTab : MultiplayerScreen::kJoinTab);
     if (!other) return false;
     other.activate();
-    // Land on the new tab (focus could otherwise sit on Back, which both tabs share, and nothing would be spoken).
-    if (core::GraphNavigator* nav = app::navigator()) nav->focus_node(ControlId::structural(to_host ? "mp.host" : "mp.join"), false);
+    if (core::GraphNavigator* nav = app::navigator()) nav->focus_node(tab_id(to_host), false);
     MessageBuilder m;
     strings::push_control(m, other.caption(), strings::kTab, false, false);
     speech::speak(m.build(), true);
     return true;
   }
-  void on_push() override { edit_.stop(); }
-  void on_unfocus() override { edit_.stop(); }
-  void on_update() override { if (edit_.active()) edit_.tick(field_box(field_)); }
+  // Every popup ("Building server list" after a refresh, a refused join, the password prompt) takes this screen off the
+  // stack and its nav state with it. Coming back from one lands where the player was; a fresh entry lands on the OPEN
+  // tab, not the first one, so the tab under the cursor is the one showing.
+  void on_push() override { edit_.stop(); seat_ = true; }
+  void on_unfocus() override {
+    edit_.stop();
+    core::GraphNavigator* nav = app::navigator();
+    return_to_ = exe_ui::popup() && nav ? nav->focused_id() : std::nullopt;
+  }
+  void on_update() override {
+    if (seat_) {
+      seat_ = false;
+      MultiplayerScreen s = exe_ui::multiplayer_screen();
+      core::GraphNavigator* nav = app::navigator();
+      if (s && nav) nav->focus_node(return_to_ ? *return_to_ : tab_id(s.hosting()));
+      return_to_.reset();
+    }
+    if (edit_.active()) edit_.tick(field_box(field_));
+  }
 
   void build(GraphBuilder& b) override {
     MultiplayerScreen s = exe_ui::multiplayer_screen();
     if (!s) return;
     bool hosting = s.hosting();
-    b.begin_stop("modes");
-    b.start_row("mode");
-    b.add_item(ControlId::structural("mp.join"), tab_item(s.member(MultiplayerScreen::kJoinTab)));
-    b.add_item(ControlId::structural("mp.host"), tab_item(s.member(MultiplayerScreen::kHostTab)));
-    b.end_row();
-    b.start_row("network");
-    b.add_item(ControlId::structural("mp.internet"), tab_item(s.member(MultiplayerScreen::kInternet)));
-    b.add_item(ControlId::structural("mp.lan"), tab_item(s.member(MultiplayerScreen::kLan)));
+    b.begin_stop("tabs");
+    b.start_row("tabs");
+    b.add_item(tab_id(false), tab_item(s.member(MultiplayerScreen::kJoinTab)));
+    b.add_item(tab_id(true), tab_item(s.member(MultiplayerScreen::kHostTab)));
     b.end_row();
     if (hosting) build_host(b, s);
     else {
@@ -195,10 +230,16 @@ class MultiplayerMenuScreen : public Screen {
     return v;
   }
   static std::string label_of(const MultiplayerScreen& s, unsigned off) { return textcap::speakable(s.member(off).text()); }
+  static ControlId tab_id(bool host) { return ControlId::structural(host ? "mp.host" : "mp.join"); }
+  static void add_network(GraphBuilder& b, const MultiplayerScreen& s) {
+    WidgetA internet = s.member(MultiplayerScreen::kInternet), lan = s.member(MultiplayerScreen::kLan);
+    if (internet && lan) b.add_item(ControlId::structural("mp.network"), network_item(internet, lan));
+  }
 
   void build_filters(GraphBuilder& b, const MultiplayerScreen& s) {
     Filters f = filters(s);
     b.begin_stop("filters");
+    add_network(b, s);
     if (f.refresh) b.add_item(ControlId::structural("mp.refresh"), widget_button(f.refresh, std::string(strings::kRefresh)));
     if (f.name) b.add_item(ControlId::structural("mp.filter.name"), edit(f.name_label, Field::FilterName, f.name));
     int i = 0;
@@ -268,6 +309,7 @@ class MultiplayerMenuScreen : public Screen {
   // check boxes. Every label is the game's own text widget.
   void build_host(GraphBuilder& b, const MultiplayerScreen& s) {
     b.begin_stop("host");
+    add_network(b, s);
     b.push_context(strings::kHostSettings);
     b.add_item(ControlId::structural("mp.host.name"), edit(label_of(s, MultiplayerScreen::kHostNameLabel), Field::HostName, s.member(MultiplayerScreen::kHostName)));
     b.add_item(ControlId::structural("mp.host.password"), edit(label_of(s, MultiplayerScreen::kHostPasswordLabel), Field::HostPassword, s.member(MultiplayerScreen::kHostPassword)));
@@ -307,6 +349,8 @@ class MultiplayerMenuScreen : public Screen {
 
   EditSession edit_;
   Field field_ = Field::None;
+  bool seat_ = false;
+  std::optional<ControlId> return_to_;   // the focused control when a popup covered the screen
 };
 
 std::unique_ptr<Screen> make_multiplayer() { return std::make_unique<MultiplayerMenuScreen>(); }

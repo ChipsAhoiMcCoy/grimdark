@@ -196,11 +196,14 @@ move them, bad things happen.  What bad things? It depends; don't go find out.
 The main menu has three Tab stops: the general buttons; the character list (only when there is more than one character;
 Enter selects); then Start / difficulty / game mode / Delete.
 
-The Multiplayer screen (main menu, Multiplayer) has Join Multiplayer and Host Multiplayer tabs; Ctrl+Tab switches between
-them from anywhere. On the Join tab, Tab moves through the filters, the list of games and your Steam friends. Arrowing onto
+The Multiplayer screen (main menu, Multiplayer) has Join Multiplayer and Host Multiplayer tabs on one row: Left / Right
+on the row open the tab you land on, and Ctrl+Tab switches between them from anywhere. Each tab starts with the network
+choice (Internet or LAN; Left / Right change it). On the Join tab, Tab moves through the filters, the list of games and your Steam friends. Arrowing onto
 a game selects it, and Enter joins it, or Start joins the game you selected last. Enter on a friend joins their game when
 the game allows it. On the Host tab you set the game name, password, level range, player count and the Auto-Party,
 Instanced Loot and PVP boxes, then press Start to host. Both tabs end with your characters and Start / Back.
+Joining a game with a password shows a message with a password box: Down from the message reaches it, Enter starts
+typing, Enter stops, then Tab to Ok. Escape cancels.
 
 ### Moving and interacting
 

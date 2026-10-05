@@ -2,6 +2,11 @@
 
 - The Multiplayer screen now works. Choose Join Multiplayer or Host Multiplayer (`ctrl tab` switches between them), browse the list of games with the arrow keys, hear each game's players, difficulty, expansion, level range, password, hardcore, PvP, loot and ping, and press `enter` on a game to join it. The filters, your Steam friends list, the host settings and the character list are all there too.
   - Joining and hosting have not been tried yet; browsing, the filters, the host settings and switching tabs have.
+- The Multiplayer screen's tabs now work like the tabs in the game's windows: Join Multiplayer and Host Multiplayer sit on one row, and arrowing onto a tab opens it. Internet or LAN is now one choice called network, changed with `left` and `right`, at the top of each tab.
+- After the server list refreshes, or after a message box on the Multiplayer screen closes, you are back on the control you were on instead of the first tab.
+- Fix: the password box that appears when you join a password-protected game is now read. Press `down` from the message to reach the password, `enter` to start typing, `enter` to stop, then choose Ok. `escape` cancels.
+  - Joining with the right password has not been tried yet.
+- Fix: the message the game shows when it refuses to let you join a game (for example "This game is using an incompatible game mode") is now read, with its Ok button.
 
 # 0.5.2 (2026-10-02)
 

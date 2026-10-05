@@ -251,3 +251,12 @@ framework-A widgets held at fixed screen members (pointers read live, cross-chec
   CHILD of the multiplayer screen (vtable exe+0x30baa8) holding a popup window (exe+0x30d650) with the text and Cancel;
   `exe_ui::popup()` finds it there, so the message-box screen reads it. Switching Join/Host rebuilds the filter
   widgets (new pointers) and restarts the list query.
+- More modal layers inside the multiplayer screen (measured live 2026-10-05): a refused join is the ordinary popup layer
+  (exe+0x30bd80, the root's name-exists class) with window exe+0x30d650 = Ok + the text ("This game is using an
+  incompatible game mode. Your mode: "Grim Dawn", Server's mode: """ -- tagMenuError21a, exe+0xe7176 expansion id /
+  exe+0xe7286 GameInfo::GetMode checks); the password prompt (tagMenuError17 "A password is required to join this
+  game.", after every exe+0xe6ed0 check passed) is layer exe+0x30bb98 holding the same window class with children in
+  tree order Ok (20,108), the text (200,27), Cancel (230,108), an EDIT (133,65 200x22; +0x258 = 1, 0 on the other edit
+  boxes) and TEXT "Password" (67,72) -- the label comes AFTER the box, so `Popup::edit_label()` matches by row.
+  Ok joins with the box's text: an empty or wrong password -> loading "Connecting to Server..." -> "Network problems
+  detected." -> back to this screen.

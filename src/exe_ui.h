@@ -71,13 +71,16 @@ struct WidgetA {
 };
 
 // A modal popup of the menu tree (e.g. "A character with that name already exists."): a layer widget at the
-// root holding one window with text widgets and buttons -- or, on the multiplayer screen, that screen's own layer
-// ("Building server list.  Cancel to view partial server list." + Cancel). Null when none is up.
+// root holding one window with text widgets and buttons -- or, on the multiplayer screen, one of that screen's own
+// layers ("Building server list.  Cancel to view partial server list." + Cancel; a refused join + Ok; the password
+// prompt: text, a "Password" edit box, Ok / Cancel). Null when none is up.
 struct Popup {
   WidgetA window;
   explicit operator bool() const { return (bool)window; }
-  std::string text() const;              // its text widgets, joined
+  std::string text() const;              // its text widgets, joined (not the edit box's label)
   std::vector<WidgetA> buttons() const { return window.buttons(); }
+  WidgetA edit() const;                  // the join password prompt's edit box; null on a plain message
+  WidgetA edit_label() const;            // the text on the edit box's row ("Password")
 };
 Popup popup();
 

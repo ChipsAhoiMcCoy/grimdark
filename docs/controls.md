@@ -136,8 +136,11 @@ selected, 4 of 4"; Enter selects, and the game swaps the preview); then the char
 difficulty, game mode, Delete). Tab into the list lands on the selected character.
 
 ## The multiplayer screen (2026-10-04, `screens/multiplayer.cpp`, docs/exe-ui-layout.md "Multiplayer")
-Tab stops: the mode rows (Join Multiplayer / Host Multiplayer, then Internet / LAN; Enter switches, **Ctrl+Tab
-flips Join <-> Host from anywhere**); on the Join tab the filters (refresh, the game-name edit, Type and the six filter
+Tab stops: the tab row (Join Multiplayer / Host Multiplayer, the windows' tab strip since 2026-10-05: **landing on a tab
+opens it**, no "selected" spoken, Enter a no-op re-select, **Ctrl+Tab / Ctrl+Shift+Tab flip Join <-> Host from anywhere**
+and land on the opened tab; a fresh entry lands on the OPEN tab, a return from a popup on the control focused when it
+covered the screen); each tab's first stop starts with "network, combo box, Internet" (the Internet / LAN pair as one
+choice, Left/Right); on the Join tab the filters (refresh, the game-name edit, Type and the six filter
 drop-downs with Left/Right, the hide check boxes), the server list ("94 Games / 178 Players", then one row per game:
 "name, 3 of 4 players, Elite, Forgotten Gods, level 1 to 200, password, hardcore, PvP, free loot, no auto party, ping
 137" -- the flags only when they differ from a default game), the Steam friends list ("name, Online"; then Join Game,
@@ -147,7 +150,10 @@ game mode, Back. **Landing on a server or a friend selects it in the game** (a s
 it** (the game's double click: select + Start, with the game's own checks and error boxes); Enter on a friend presses
 Join Game. Start on the Join tab joins the server last landed on, on the Host tab hosts. The "Building server list"
 box is read as a message; Escape presses its Cancel, which is the game's own (pressed 160 ms after opening, before any
-game had arrived, it went back to the main menu -- observed once, 2026-10-04).
+game had arrived, it went back to the main menu -- observed once, 2026-10-04). A refused join ("This game is using an
+incompatible game mode ...", Ok) and the join password prompt are read by the message box screen; the prompt adds
+"Password, edit" after the message in the same stop (Down, Enter types, Enter ends; the edit session of
+`screens/edit_field.h`), then Ok / Cancel; Escape = the last button = Cancel.
 
 ## The in-world windows (2026-08-22, first pass)
 Each game window is a screen of the mod while the game shows it (Ctrl+C/I inventory, Ctrl+N skills, Ctrl+Q
