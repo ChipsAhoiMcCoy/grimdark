@@ -23,6 +23,7 @@
 #include "screens/main_menu.h"
 #include "screens/map_markers.h"
 #include "screens/message_box.h"
+#include "screens/multiplayer.h"
 #include "screens/pause_menu.h"
 #include "screens/tip.h"
 #include "screens/codex.h"
@@ -312,6 +313,7 @@ void init() {
   g_screens.register_screen(screens::make_create_character());
   g_screens.register_screen(screens::make_delete_character());
   g_screens.register_screen(screens::make_options());
+  g_screens.register_screen(screens::make_multiplayer());
   g_screens.register_screen(screens::make_difficulty_select());
   g_screens.register_screen(screens::make_in_game());
   g_screens.register_screen(screens::make_message_box());

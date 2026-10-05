@@ -135,6 +135,19 @@ game); the character list, present only when there is more than one character ("
 selected, 4 of 4"; Enter selects, and the game swaps the preview); then the character-specific row (Start,
 difficulty, game mode, Delete). Tab into the list lands on the selected character.
 
+## The multiplayer screen (2026-10-04, `screens/multiplayer.cpp`, docs/exe-ui-layout.md "Multiplayer")
+Tab stops: the mode rows (Join Multiplayer / Host Multiplayer, then Internet / LAN; Enter switches, **Ctrl+Tab
+flips Join <-> Host from anywhere**); on the Join tab the filters (refresh, the game-name edit, Type and the six filter
+drop-downs with Left/Right, the hide check boxes), the server list ("94 Games / 178 Players", then one row per game:
+"name, 3 of 4 players, Elite, Forgotten Gods, level 1 to 200, password, hardcore, PvP, free loot, no auto party, ping
+137" -- the flags only when they differ from a default game), the Steam friends list ("name, Online"; then Join Game,
+Add Friend); on the Host tab the host settings (Game Name / Password / Level Range edits -- Enter starts typing, Enter
+or Escape ends -- Max. Players, Auto-Party / Instanced Loot / PVP); then the character list; then Start, difficulty,
+game mode, Back. **Landing on a server or a friend selects it in the game** (a single click); **Enter on a server joins
+it** (the game's double click: select + Start, with the game's own checks and error boxes); Enter on a friend presses
+Join Game. Start on the Join tab joins the server last landed on, on the Host tab hosts. The "Building server list"
+box is read as a message (Escape = its Cancel, which shows the partial list).
+
 ## The in-world windows (2026-08-22, first pass)
 Each game window is a screen of the mod while the game shows it (Ctrl+C/I inventory, Ctrl+N skills, Ctrl+Q
 codex, Ctrl+J factions; NPC windows when an NPC opens them). Layout rule: a tab list across the top (Left/Right

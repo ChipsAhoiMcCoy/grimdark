@@ -67,7 +67,7 @@ file(WRITE ${CMAKE_BINARY_DIR}/version.txt "${GRIMDARK_VERSION}
 add_library(grimdark SHARED
   src/dllmain.cpp src/log.cpp src/crash.cpp src/speech.cpp src/hooks.cpp src/textcap.cpp src/devserver.cpp src/audio_mute.cpp src/app.cpp src/screens/main_menu.cpp src/screens/create_character.cpp src/screens/difficulty_select.cpp
   src/audio.cpp src/world.cpp src/screens/in_game.cpp src/screens/message_box.cpp src/screens/pause_menu.cpp
-  src/screens/loading.cpp src/screens/tip.cpp src/screens/conversation.cpp src/exe_ui.cpp src/screens/delete_character.cpp src/screens/options.cpp
+  src/screens/loading.cpp src/screens/tip.cpp src/screens/conversation.cpp src/exe_ui.cpp src/screens/delete_character.cpp src/screens/options.cpp src/screens/multiplayer.cpp
   src/voice.cpp src/tts_onecore.cpp src/combat.cpp src/casts.cpp src/telegraph.cpp src/settings.cpp src/cues.cpp src/screens/announcements.cpp src/screens/cue_settings.cpp src/screens/mod_menu.cpp src/screens/sound_glossary.cpp src/notify.cpp src/quest_rewards.cpp src/gameapi.cpp src/gameapi_items.cpp src/gameapi_skills.cpp src/gameapi_devotion.cpp src/gameapi_pets.cpp src/screens/pets.cpp src/gameapi_loot.cpp src/screens/loot_filter.cpp src/gameapi_crafting.cpp src/screens/crafting.cpp src/screens/inventor.cpp
   src/screens/codex.cpp src/screens/factions.cpp src/screens/inventory.cpp src/screens/skills.cpp src/screens/quickbar.cpp
   src/screens/modals.cpp src/screens/vendor.cpp src/db.cpp src/rooms.cpp src/sonar.cpp src/hazard.cpp src/screens/riftgate.cpp

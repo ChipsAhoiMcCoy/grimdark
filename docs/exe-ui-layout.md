@@ -54,7 +54,8 @@ Classes (by vtable):
   comes from a click inside its rect (its mouse handler exe+0xed5a0); no focus byte found (+0x218 stays 0).
 - Image exe+0x30b4e0 (no text). Popup layer exe+0x30bd80 at the root holding a popup window exe+0x30d650 with
   text widgets and buttons ("A character with that name already exists." + Ok). The multiplayer screen
-  (state 6) is vtable exe+0x30d308 with list/scroll classes exe+0x30c6a0, 0x30ce40, 0x30cf48, 0x30c278.
+  (state 6) is vtable exe+0x30d308 with list/scroll classes exe+0x30c6a0, 0x30ce40, 0x30cf48, 0x30c278 -- mapped in
+  "Multiplayer" below.
 
 Measured windows (1600x900 positions are the widgets' own, not needed by the mod):
 - Create Character: image, TEXT 'Create Character', TEXT 'Name', EDIT, A2 Male/Female/Hardcore, A1 Next
@@ -155,7 +156,8 @@ available response, or one "End conversation" row. The click handler runs the st
 
 ## Screen identity summary (what `is_active` reads)
 main menu: app state 3/4/8 + no sub-window + no popup. Create/Delete Character, Difficulty: the manager's
-sub-window slot (+ hidden byte). Options: app state 5 + the screen in the tree. Message box: DialogManager
+sub-window slot (+ hidden byte). Options: app state 5 + the screen in the tree. Multiplayer: app state 6 + the
+screen (exe+0x30d308) in the tree + no popup (its own modal layer included). Message box: DialogManager
 (world) or the popup layer (menus). Loading: app state 10. In game: InGameUI present. Pause: exit window
 IsVisible. Conversation: the window's visible byte + fade state. Tip: a kind-1 tip with state < 2.
 
@@ -210,3 +212,42 @@ folders and reads each `player.gdc` header). A left-up on a row writes `+0xc0` a
 `MainMenu::Update` (exe+0xd95a0) commits it: swaps the preview entity, `GameInfo::SetPlayerInfo`, and stores
 `main_menu+0x378` = the preview id (what Start at exe+0xda700 and Delete read). So selecting = write `+0xc0`
 (and keep `+0xc4` in range): `MainMenu::characters/selected_character/select_character`.
+
+## Multiplayer (app state 6; measured live 2026-10-04 at the main menu's Multiplayer button, Steam build 1.3.0.8)
+The screen is a root child with vtable exe+0x30d308 (code around exe+0xe2000..0xea500). Its controls are ordinary
+framework-A widgets held at fixed screen members (pointers read live, cross-checked against the tree dump):
+- `+0x270` Add Friend, `+0x278` Join Game (the selected friend's game; greyed until it can join), `+0x6e8` the friends
+  panel, `+0x6f0` the server panel, `+0x6f8` the host panel (in the tree only on the Host tab), `+0x700` the right
+  panel, `+0x710` the filter bar (vtable exe+0x30cf48), `+0x718` four tiles (exe+0x30d148, not read yet), `+0x720` the
+  friends list, `+0x728` the server list, `+0x758` Start, `+0x760` difficulty, `+0x768` game mode, `+0x770` Back,
+  `+0x778` Join Multiplayer / `+0x780` Host Multiplayer (A1 toggles, one pressed), `+0x788` Internet / `+0x790` LAN,
+  `+0x7f8` the count text ("94 Games / 178 Players"), `+0x800` the character picker (the main menu's CharacterPicker
+  class, here a tree node; same entry layout, verified: "Chips", level 7 at +0x80).
+- Host settings, each control after the game's own label text: `+0x820/+0x828` Game Name + edit ("Grim Dawn Server"),
+  `+0x830/+0x838` Password + edit, `+0x840/+0x848` Max. Players + combo (2/3/4), `+0x850/+0x858` Level Range +/- + edit
+  ("200"), then the A2 check boxes `+0x860` Auto-Party, `+0x868` PVP, `+0x870` Instanced Loot.
+- The filter bar's children in tree order: the refresh icon button (no caption), TEXT "Game Name", its EDIT, TEXT
+  "Type", the Type combo (Grim Dawn / Crucible / Custom Games), six unlabeled combos (All/Friends/Recent Servers; Any
+  Difficulty/Normal/Veteran/Elite/Ultimate/Ascendant; PVP On/Off; Hardcore/Softcore; Auto Party On/Off; Any/Instanced/
+  Free Loot), A2 Hide Full Games, Hide Locked Games, Hide In Progress Games (inactive). All combos are exe+0x30c278.
+- The lists (vtable exe+0x30c6a0, HandleMouseEvent exe+0xb5090, signature-checked) keep the same rows as the
+  key-binding table: `+0x260/+0x268` vector of row pointers, each row a vector<u16string>. A server row has 12 cells:
+  lock icon, name, type, "1 / 4 ", "1 - 200", difficulty icon, hardcore, auto-party, loot, PvP icons, version, ping
+  ("---" = none). Icon cells are "[texture]UI/MainMenu/Multiplayer/Multiplayer_Icon<Name>.tex", " " when blank; UI.arc
+  ships exactly one icon per flag (Locked, Hardcore, Party, Loot, PvP), so blank = off (loot: free). Difficulty
+  (exe+0xe9961, from the server's GameInfo): challenge 1 = ChallengeMode (Veteran), challenge 3 = UltimateChallengeMode
+  (Ascendant), else difficulty 0/1/2 = Difficulty01/02/03 (Normal/Elite/Ultimate; the Crucible uses Survival_*). A
+  friends row is {"", "Name\nStatus"}.
+- Selection: a left-down on a row stores the index at `+0x19c` (exe+0xb53bb), the column at `+0x1a0`, plays the
+  click sound, sets `+0x219` = "same row as last time" and calls the listeners at `+0x148/+0x150` (`L->vt[0](L, list)`,
+  exe+0xb67f0). The screen's listener (screen+0xc0, vtable exe+0x30b890, exe+0xe5bf0, signature-checked) acts only
+  when the list is the server list (`+0x668` from it = screen+0x728), `+0x219` is set, the two clicks were close in
+  time and Start (`+0x698` = screen+0x758) is enabled: then exe+0xe6ed0, the join. So a single click is just the
+  index; the mod writes `+0x19c` (`WidgetA::list_select`).
+- Start on the Join tab = exe+0xe6ed0 on the selected row's GameInfo (row virtual +0x108): level range, expansion,
+  version, mode (tagMenuError21a), full (tagMenuError22), hardcore mismatch (tagMenuError21b) -- failures are popups.
+  Not pressed during measurement.
+- The "Building server list.  Cancel to view partial server list." box (tagMenuError31) is a modal layer that is a
+  CHILD of the multiplayer screen (vtable exe+0x30baa8) holding a popup window (exe+0x30d650) with the text and Cancel;
+  `exe_ui::popup()` finds it there, so the message-box screen reads it. Switching Join/Host rebuilds the filter
+  widgets (new pointers) and restarts the list query.

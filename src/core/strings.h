@@ -4,6 +4,7 @@
 #include <string_view>
 #include <vector>
 #include "message_builder.h"
+#include "server_row.h"
 
 // The single home for mod-authored spoken strings and, more importantly, for the spoken CONVENTIONS:
 // role words, how a position in a list reads, what "nothing here" sounds like. Game-provided text
@@ -260,6 +261,18 @@ inline constexpr std::string_view kDistant = "distant";          // the same thi
 inline constexpr std::string_view kPercent = "percent";
 inline std::string percent(int value) { return std::to_string(value) + " " + std::string(kPercent); }   // "70 percent"
 inline constexpr std::string_view kKeyBindings = "key bindings";
+// ---- the multiplayer screen (screens/multiplayer.cpp) ----
+inline constexpr std::string_view kMultiplayerScreen = "Multiplayer";
+inline constexpr std::string_view kFriends = "friends";
+inline constexpr std::string_view kServers = "servers";
+inline constexpr std::string_view kHostSettings = "host settings";
+inline constexpr std::string_view kRefresh = "refresh";   // the filter bar's icon button (no caption)
+// The filter bar's drop-downs after Type carry no label of their own (their first entry names the filter: "All Servers",
+// "Any Difficulty" ...): ours, in the game's tree order.
+inline constexpr std::string_view kServerFilterLabels[6] = {"server list", "difficulty", "PvP", "hardcore", "auto party", "loot"};
+// "Grim Dawn Server, 3 of 4 players, Elite, Forgotten Gods, level 1 to 200, password, hardcore, PvP, free loot,
+// no auto party, ping 137" -- a server row (game text verbatim; the flags only when they differ from a default game).
+gd::core::MessageBuilder& push_server_row(gd::core::MessageBuilder& m, const gd::core::ServerRow& r);
 // ---- combat (spoken through the positional voices: Mark at the enemy, Zira for the player) ----
 inline constexpr std::string_view kHealth = "health";
 inline constexpr std::string_view kEnergy = "energy";

@@ -62,11 +62,17 @@ struct WidgetA {
   int combo_index() const;
   bool set_combo(int index) const;   // writes the index and fires the listeners (what choosing a row does)
   bool is_list() const;            // exe+0x30c530: the key-binding table, rows of u16 cells (action, key, key)
-  std::vector<std::vector<std::string>> list_rows() const;
+  std::vector<std::vector<std::string>> list_rows() const;   // the same rows layout serves is_row_list()
+  // exe+0x30c6a0: a selectable row list (the multiplayer screen's friends and servers). The selection is the row
+  // index a single click stores; writing it is that click minus the sound (no listener acts on a single click).
+  bool is_row_list() const;
+  int list_selected() const;       // -1 = none / not a row list
+  bool list_select(int index) const;
 };
 
 // A modal popup of the menu tree (e.g. "A character with that name already exists."): a layer widget at the
-// root holding one window with text widgets and buttons. Null when none is up.
+// root holding one window with text widgets and buttons -- or, on the multiplayer screen, that screen's own layer
+// ("Building server list.  Cancel to view partial server list." + Cancel). Null when none is up.
 struct Popup {
   WidgetA window;
   explicit operator bool() const { return (bool)window; }
@@ -109,6 +115,31 @@ MainMenu main_menu();
 // Character window pointer appears in the manager's child vector as is).
 WidgetA window_node(void* window);
 bool window_hidden_flag(void* window, unsigned flag_off);  // CreateCharacter +0x288, Difficulty +0x350
+
+// The multiplayer screen (app state 6, vtable exe+0x30d308; docs/exe-ui-layout.md "Multiplayer", measured live
+// 2026-10-04): Join / Host mode tabs, Internet / LAN, the Steam friends list, the filter bar, the server list, the host
+// settings, the character picker and the bottom bar, every one a framework-A widget held at a fixed screen member.
+// Start is mode-dependent: Join joins the selected server (exe+0xe6ed0: the game's own level / mode / full / hardcore
+// checks, failures as a popup), Host hosts with the host settings.
+struct MultiplayerScreen {
+  WidgetA screen;
+  explicit operator bool() const { return (bool)screen; }
+  WidgetA member(unsigned off) const;
+  bool hosting() const;   // the Host tab is the pressed one
+  static constexpr unsigned kAddFriend = 0x270, kJoinFriend = 0x278 /*"Join Game": the selected friend's game*/, kHostPanel = 0x6f8,
+                            kFilterBar = 0x710, kFriendsList = 0x720, kServerList = 0x728 /*the listener's +0x668*/,
+                            kStart = 0x758 /*the listener's +0x698*/, kDifficulty = 0x760, kGameMode = 0x768, kBack = 0x770,
+                            kJoinTab = 0x778, kHostTab = 0x780, kInternet = 0x788, kLan = 0x790, kCountText = 0x7f8 /*"94 Games / 178 Players"*/,
+                            kPicker = 0x800 /*the CharacterPicker class of the main menu, here a tree node*/;
+  // The host settings: each control with the game's own label text before it.
+  static constexpr unsigned kHostNameLabel = 0x820, kHostName = 0x828, kHostPasswordLabel = 0x830, kHostPassword = 0x838,
+                            kHostMaxPlayersLabel = 0x840, kHostMaxPlayers = 0x848, kHostLevelRangeLabel = 0x850, kHostLevelRange = 0x858,
+                            kHostAutoParty = 0x860, kHostPvp = 0x868, kHostInstancedLoot = 0x870;
+  std::vector<MainMenu::Character> characters() const;
+  int selected_character() const;
+  bool select_character(int index) const;
+};
+MultiplayerScreen multiplayer_screen();
 
 // The options screen (app state 5): seven tab toggles (their rollover tags name them), the active page's
 // controls in declaration order (a TEXT label immediately precedes the slider/combo it names), and the

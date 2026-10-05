@@ -1146,3 +1146,20 @@ CLAUDE.md "Traps and lessons"; the mechanism docs are `docs/*.md`.
   menu" -- the title / intro sit on the "unsupported" fallback first. Now gated on `main_menu` / `in_game` only: "Main
   menu" 17:02:18.649, the update line 17:02:21.674. Offline path via the new dev knob `GRIMDARK_UPDATE_HOST=nonexistent.invalid`:
   `update: request failed (12007)`, nothing spoken, main menu normal. Build reconfigured back to dev afterwards.
+
+## 2026-10-04 -- the Multiplayer screen (measured live; the screen code NOT compiled or run yet)
+- Machine had no Visual Studio, so the measuring ran on the INSTALLED v0.5.2 (same routes as this tree):
+  `GRIMDARK_NOFOCUS=1 GRIMDARK_MUTE=1 GRIMDARK_PORT=8791 gdlaunch.exe` with options.txt temporarily windowed 1600x900 +
+  `inactiveUpdateRate 30` (restored afterwards). `/ui/activate` on the main menu's Multiplayer button -> app state 6.
+  Python tools ran from a scratch venv (pefile/capstone/lz4/pillow) since uv was not installed.
+- Layout, rows, icons, selection and the join path: docs/exe-ui-layout.md "Multiplayer". Key facts: the server and
+  friends lists share the key-binding table's rows layout (12 u16 cells per server row); a single click is only the
+  index at list+0x19c, the screen's listener joins on a double click (exe+0xe5bf0 -> exe+0xe6ed0) and Start does the
+  same on the Join tab; the "Building server list" box is a modal layer inside the multiplayer screen, now found by
+  `exe_ui::popup()`. Difficulty icons from exe+0xe9961 (GameInfo challenge / difficulty); one icon per flag in UI.arc.
+- Pressed only Multiplayer, Host Multiplayer and Join Multiplayer (back). Never Start / Join Game: nothing joined or hosted.
+- Found and fixed in passing: `kSignatureLens` had 16 entries for 18 signatures (the DevotionWindow ctor and
+  Star::HandleMouseEvent checks read past the array); all 20 signatures now verified against the dump, with a
+  static_assert on the counts. `list_rows()` capped rows at 8 cells / 256 rows: now 16 / 1024.
+- Open: the right panel's four tiles (+0x718, exe+0x30d148), the refresh button's exact action, whether the friends
+  list selection drives Join Game's enabled state, the difficulty / game-mode buttons on the Host tab, the Network screen.

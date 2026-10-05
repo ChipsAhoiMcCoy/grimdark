@@ -24,6 +24,9 @@ constexpr uintptr_t kEditA = 0x30d588;          // framework A edit box (draw ex
 constexpr uintptr_t kSliderA = 0x30d4c0;        // options slider (ctor exe+0xeac40; thumb math exe+0xebb46)
 constexpr uintptr_t kComboA = 0x30c278;         // drop-down (commit exe+0xab951)
 constexpr uintptr_t kListA = 0x30c530;          // key-binding table (ctor exe+0xaf8f0, rows exe+0xafe20)
+constexpr uintptr_t kRowListA = 0x30c6a0;       // the multiplayer screen's selectable row lists (HandleMouseEvent exe+0xb5090; same rows layout as kListA)
+constexpr uintptr_t kMultiplayerScreenVt = 0x30d308;  // app state 6 (measured live 2026-10-04)
+constexpr uintptr_t kProgressLayerVt = 0x30baa8;      // the multiplayer screen's modal layer ("Building server list" + Cancel): a child of that screen, not of the root
 constexpr uintptr_t kOptionsScreenVt = 0x30cad0, kOptionsPanelVt = 0x30d650, kOptionsPageVt = 0x30cbb8;  // measured live 2026-08-22
 constexpr uintptr_t kConvWindowVt = 0x3157a8, kConvRowVt = 0x315710;  // ctors exe+0x16e9a0 / exe+0x16d9b0
 constexpr uintptr_t kPopupLayerVt = 0x30bd80;   // modal layer at the root holding a popup window (measured live: the name-exists box)
@@ -83,8 +86,11 @@ const Signature kSignatures[] = {
   {0x8a040, "CharacterPicker::HandleMouseEvent", "\x40\x53\x56\x57\x48\x83\xec\x50\x0f\x29\x74\x24\x40\x48\x8b\xd9"},
   {0x185640, "DevotionWindow ctor", "\x48\x89\x4c\x24\x08\x55\x56\x57\x41\x54\x41\x55\x41\x56\x41\x57"},
   {0x17ea10, "Star::HandleMouseEvent", "\x48\x8b\xc4\x55\x56\x57\x41\x54\x41\x55\x41\x56\x41\x57\x48\x81"},
+  {0xb5090, "row list HandleMouseEvent", "\x48\x8b\xc4\x57\x48\x81\xec\xd0\x00\x00\x00\x48\xc7\x44\x24\x20"},
+  {0xe5bf0, "multiplayer server-list listener", "\x48\x39\x91\x68\x06\x00\x00\x75\x33\x80\xba\x19\x02\x00\x00\x00"},   // cmp [rcx+0x668],rdx; cmp byte [rdx+0x219],0
 };
-const size_t kSignatureLens[] = {5, 16, 12, 12, 12, 12, 12, 12, 16, 16, 16, 16, 16, 16, 16, 16};   // each <= kSignatureMax
+const size_t kSignatureLens[] = {5, 16, 12, 12, 12, 12, 12, 12, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16};   // each <= kSignatureMax
+static_assert(std::size(kSignatureLens) == std::size(kSignatures), "one length per signature");
 constexpr size_t kSignatureMax = 16;
 
 uintptr_t g_base = 0;
@@ -286,10 +292,20 @@ std::vector<WidgetA> WidgetA::buttons() const { std::vector<WidgetA> v; for (Wid
 std::vector<WidgetA> WidgetA::texts() const { std::vector<WidgetA> v; for (WidgetA c : children()) if (c.is_text()) v.push_back(c); return v; }
 std::vector<WidgetA> WidgetA::edits() const { std::vector<WidgetA> v; for (WidgetA c : children()) if (c.is_edit()) v.push_back(c); return v; }
 
+namespace {
+WidgetA popup_window_in(WidgetA layer) {
+  for (WidgetA w : layer.children()) if (w.vtable_rva() == rva::kPopupWindowVt && w.active()) return w;
+  return {};
+}
+}  // namespace
 Popup popup() {
-  for (WidgetA layer : root().children()) {
-    if (layer.vtable_rva() != rva::kPopupLayerVt || !layer.active()) continue;
-    for (WidgetA w : layer.children()) if (w.vtable_rva() == rva::kPopupWindowVt && w.active()) return {w};
+  for (WidgetA c : root().children()) {
+    if (!c.active()) continue;
+    if (c.vtable_rva() == rva::kPopupLayerVt) { if (WidgetA w = popup_window_in(c)) return {w}; continue; }
+    // The multiplayer screen keeps its own modal layer among its children ("Building server list" + Cancel).
+    if (c.vtable_rva() == rva::kMultiplayerScreenVt)
+      for (WidgetA layer : c.children())
+        if (layer.vtable_rva() == rva::kProgressLayerVt && layer.active()) if (WidgetA w = popup_window_in(layer)) return {w};
   }
   return {};
 }
@@ -318,15 +334,14 @@ std::string read_ascii(const void* base, size_t off) {   // a std::string (char)
   if (!s.u.ptr || !read_mem(s.u.ptr, buf.data(), s.size)) return {};
   return buf;
 }
-}  // namespace
-std::vector<MainMenu::Character> MainMenu::characters() const {
-  std::vector<Character> out;
-  void* pk = rdp(p, kPicker);
+// The same picker class serves the main menu (a member the menu draws itself) and the multiplayer screen (a tree node).
+std::vector<MainMenu::Character> picker_characters(void* pk) {
+  std::vector<MainMenu::Character> out;
   if (!pk) return out;
   char* b = (char*)rdp(pk, kPk_Begin); char* e = (char*)rdp(pk, kPk_End);
   if (!b || !e || e < b || (size_t)(e - b) > 64 * kEntry_Size) return out;
   for (char* it = b; it + kEntry_Size <= e; it += kEntry_Size) {
-    Character c;
+    MainMenu::Character c;
     c.name = read_u16(it, kEntry_Name);
     c.class_tag = read_ascii(it, kEntry_Class);
     c.level = rd_or<uint32_t>(it, kEntry_Level, 0);
@@ -337,9 +352,8 @@ std::vector<MainMenu::Character> MainMenu::characters() const {
   }
   return out;
 }
-int MainMenu::selected_character() const { void* pk = rdp(p, kPicker); return pk ? rd_or<int>(pk, kPk_Selected, -1) : -1; }
-bool MainMenu::select_character(int index) const {
-  void* pk = rdp(p, kPicker);
+int picker_selected(void* pk) { return pk ? rd_or<int>(pk, kPk_Selected, -1) : -1; }
+bool picker_select(void* pk, int index) {
   if (!pk) return false;
   char* b = (char*)rdp(pk, kPk_Begin); char* e = (char*)rdp(pk, kPk_End);
   int n = (b && e && e >= b) ? (int)((e - b) / kEntry_Size) : 0;
@@ -351,10 +365,26 @@ bool MainMenu::select_character(int index) const {
   else if (index >= first + per) write_int(pk, kPk_First, index - per + 1);
   return true;
 }
+}  // namespace
+std::vector<MainMenu::Character> MainMenu::characters() const { return picker_characters(rdp(p, kPicker)); }
+int MainMenu::selected_character() const { return picker_selected(rdp(p, kPicker)); }
+bool MainMenu::select_character(int index) const { return picker_select(rdp(p, kPicker), index); }
 void* MainMenu::sub_window(unsigned slot_off) const { return rdp(p, slot_off); }
 void* MainMenu::current_sub_window() const { return rdp(p, off::kMenu_CurrentSub); }
 WidgetA window_node(void* window) { return {window}; }
 bool window_hidden_flag(void* window, unsigned flag_off) { return rd_or<uint8_t>(window, flag_off, 1) != 0; }
+
+// ---- the multiplayer screen (docs/exe-ui-layout.md "Multiplayer") ----
+MultiplayerScreen multiplayer_screen() {
+  if (app_state() != 6) return {};
+  for (WidgetA c : root().children()) if (c.vtable_rva() == rva::kMultiplayerScreenVt && c.active()) return {c};
+  return {};
+}
+WidgetA MultiplayerScreen::member(unsigned off) const { return screen ? WidgetA{rdp(screen.p, off)} : WidgetA{}; }
+bool MultiplayerScreen::hosting() const { return member(kHostTab).pressed(); }
+std::vector<MainMenu::Character> MultiplayerScreen::characters() const { return picker_characters(member(kPicker).p); }
+int MultiplayerScreen::selected_character() const { return picker_selected(member(kPicker).p); }
+bool MultiplayerScreen::select_character(int index) const { return picker_select(member(kPicker).p, index); }
 
 // ---- framework B ----
 void* ingame_ui() { return rdp(rdp(main_obj(), off::kMainObj_WorldScreen), off::kWorldScreen_InGameUI); }
@@ -1224,16 +1254,27 @@ bool WidgetA::set_combo(int index) const {
   return ok;
 }
 bool WidgetA::is_list() const { return vtable_rva() == rva::kListA; }
+bool WidgetA::is_row_list() const { return vtable_rva() == rva::kRowListA; }
+// exe+0xb53bb: a left-down on a row stores its index at +0x19c (the click handler also notes the column, plays the
+// click sound and sets +0x219 "same row as before", which the multiplayer screen's listener reads as a double click).
+constexpr size_t kRl_Selected = 0x19c;
+int WidgetA::list_selected() const { return is_row_list() ? rd_or<int>(p, kRl_Selected, -1) : -1; }
+bool WidgetA::list_select(int index) const {
+  if (!is_row_list()) return false;
+  void* b = rdp(p, kLs_RowsBegin); void* e = rdp(p, kLs_RowsEnd);
+  int n = (b && e && e >= b) ? (int)(((char*)e - (char*)b) / sizeof(void*)) : 0;
+  return index >= 0 && index < n && write_int(p, kRl_Selected, index);
+}
 std::vector<std::vector<std::string>> WidgetA::list_rows() const {
   std::vector<std::vector<std::string>> out;
   void* b = rdp(p, kLs_RowsBegin); void* e = rdp(p, kLs_RowsEnd);
   if (!b || !e || e < b) return out;
   size_t n = ((char*)e - (char*)b) / sizeof(void*);
-  for (size_t i = 0; i < n && i < 256; ++i) {
+  for (size_t i = 0; i < n && i < 1024; ++i) {   // an Internet server list runs to hundreds of games
     void* row = rdp(b, i * sizeof(void*));  // a vector<u16string>
     std::vector<std::string> cells;
     void* cb = rdp(row, 0); void* ce = rdp(row, 8);
-    if (cb && ce && ce >= cb) { size_t m = ((char*)ce - (char*)cb) / 32; for (size_t j = 0; j < m && j < 8; ++j) cells.push_back(read_u16(cb, j * 32)); }
+    if (cb && ce && ce >= cb) { size_t m = ((char*)ce - (char*)cb) / 32; for (size_t j = 0; j < m && j < 16; ++j) cells.push_back(read_u16(cb, j * 32)); }   // a server row has 12 cells
     out.push_back(cells);
   }
   return out;

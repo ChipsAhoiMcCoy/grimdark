@@ -70,6 +70,20 @@ MessageBuilder& push_target_inspect(MessageBuilder& m, int health_percent, const
   for (const std::string& e : effects) m.list_item().fragment(e);
   return m;
 }
+MessageBuilder& push_server_row(MessageBuilder& m, const gd::core::ServerRow& r) {
+  m.list_item().fragment(r.name);
+  if (r.players >= 0) m.list_item().fragment(std::format("{} of {} players", r.players, r.max_players));
+  if (!r.difficulty.empty()) m.list_item().fragment(r.difficulty);
+  if (!r.type.empty()) m.list_item().fragment(r.type);
+  if (r.min_level >= 0) m.list_item().fragment(std::format("level {} to {}", r.min_level, r.max_level));
+  if (r.locked) m.list_item().fragment("password");
+  if (r.hardcore) m.list_item().fragment(kHardcore);
+  if (r.pvp) m.list_item().fragment("PvP");
+  if (!r.instanced_loot) m.list_item().fragment("free loot");
+  if (!r.auto_party) m.list_item().fragment("no auto party");
+  if (r.ping >= 0) m.list_item().fragment(std::format("ping {}", r.ping));
+  return m;
+}
 MessageBuilder& push_character_summary(MessageBuilder& m, unsigned level, std::string_view class_name, bool hardcore) {
   m.list_item().fragment(std::format("level {}", level));
   if (!class_name.empty()) m.fragment(class_name);
