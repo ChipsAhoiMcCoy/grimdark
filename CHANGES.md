@@ -1,7 +1,7 @@
 # Unreleased
 
 - The Multiplayer screen now works. Choose Join Multiplayer or Host Multiplayer (`ctrl tab` switches between them), browse the list of games with the arrow keys, hear each game's players, difficulty, expansion, level range, password, hardcore, PvP, loot and ping, and press `enter` on a game to join it. The filters, your Steam friends list, the host settings and the character list are all there too.
-  - Not tried in the game yet, and joining or hosting has not been tried with another player.
+  - Joining and hosting have not been tried yet; browsing, the filters, the host settings and switching tabs have.
 
 # 0.5.2 (2026-10-02)
 
