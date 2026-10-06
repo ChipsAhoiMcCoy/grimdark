@@ -104,6 +104,16 @@ struct Api {
   unsigned (*Player_GetCurrentDynamite)(const void*) = nullptr;
   bool (*GameEngine_MainPlayerCanUseDismantle)(const void*) = nullptr;
   bool (*GiveItemToPlayer)(void*, unsigned, bool) = nullptr;          // ControllerPlayer
+  // the trade (TradeManager / TradeState accessors; layout in tools/gen_names.py)
+  void* (*GetTradeManager)(void*) = nullptr;
+  void* (*GetMyTradeState)(void*) = nullptr;
+  void* (*GetHisTradeState)(void*) = nullptr;
+  unsigned (*GetTradePartner)(const void*) = nullptr;
+  bool (*GetIsTradeActive)(const void*) = nullptr;
+  void (*Trade_RemoveItemOutbound)(void*, unsigned) = nullptr;
+  unsigned (*TradeState_GetGoldAmount)(const void*) = nullptr;
+  bool (*TradeState_GetFinalized)(const void*) = nullptr;
+  void* (*TradeState_GetInventorySack)(void*) = nullptr;
   void** Item_vftable = nullptr;
   void** Item_vftable_plain = nullptr;
   bool loaded = false;
@@ -201,6 +211,15 @@ void load_items() {
   GAPI_LOAD(g, Player_GetCurrentDynamite, Player_GetCurrentDynamite);
   GAPI_LOAD(g, GameEngine_MainPlayerCanUseDismantle, GameEngine_MainPlayerCanUseDismantle);
   GAPI_LOAD(g, GiveItemToPlayer, ControllerPlayer_GiveItemToPlayer);
+  GAPI_LOAD(g, GetTradeManager, GameEngine_GetTradeManager);
+  GAPI_LOAD(g, GetMyTradeState, TradeManager_GetMyTradeState);
+  GAPI_LOAD(g, GetHisTradeState, TradeManager_GetHisTradeState);
+  GAPI_LOAD(g, GetTradePartner, TradeManager_GetTradePartner);
+  GAPI_LOAD(g, GetIsTradeActive, TradeManager_GetIsTradeActive);
+  GAPI_LOAD(g, Trade_RemoveItemOutbound, TradeManager_HandleRemoveItemOutbound);
+  GAPI_LOAD(g, TradeState_GetGoldAmount, TradeState_GetGoldAmount);
+  GAPI_LOAD(g, TradeState_GetFinalized, TradeState_GetFinalized);
+  GAPI_LOAD(g, TradeState_GetInventorySack, TradeState_GetInventorySack);
   GAPI_LOAD(g, Equip_IsItemAttached, EquipmentCtrl_IsItemAttached);
   GAPI_LOAD(g, Item_MeetsRequirements, Item_MeetsRequirements);
   GAPI_LOAD(g, GetCharLevel, Character_GetCharLevel);
@@ -723,6 +742,61 @@ Bag read_sack(const void* sack, int index) {
   return b;
 }
 }  // namespace
+
+// ---- the trade (static RE 2026-10-06; docs/exe-ui-layout.md "Trade") ----
+// Both offers are TradeStates on the TradeManager: the items are COPIES (HandleAddItemOutbound creates one with
+// Item::CreateItem into the offering side's sack; the original leaves the bag through SendRemoveItemFromInventory),
+// so an offered item has its own object id.
+TradeView trade_view() {
+  load_items();
+  TradeView v;
+  void* e = engine();
+  if (!e || !g.GetTradeManager || !g.GetMyTradeState || !g.GetHisTradeState || !g.TradeState_GetInventorySack) return v;
+  void* tm = nullptr; void* mine = nullptr; void* his = nullptr;
+  guarded("trade states", [&] {
+    tm = g.GetTradeManager(e);
+    if (!tm) return;
+    v.active = g.GetIsTradeActive && g.GetIsTradeActive(tm);
+    v.partner = g.GetTradePartner ? g.GetTradePartner(tm) : 0;
+    mine = g.GetMyTradeState(tm); his = g.GetHisTradeState(tm);
+    if (g.TradeState_GetGoldAmount) { v.my_gold = g.TradeState_GetGoldAmount(mine); v.their_gold = g.TradeState_GetGoldAmount(his); }
+    if (g.TradeState_GetFinalized) { v.my_accepted = g.TradeState_GetFinalized(mine); v.their_accepted = g.TradeState_GetFinalized(his); }
+  });
+  if (!tm) return v;
+  void* my_sack = nullptr; void* his_sack = nullptr;
+  guarded("trade sacks", [&] { my_sack = g.TradeState_GetInventorySack(mine); his_sack = g.TradeState_GetInventorySack(his); });
+  v.mine = read_sack(my_sack, 0).items;
+  v.theirs = read_sack(his_sack, 1).items;
+  return v;
+}
+// The trade grid's own pick-up (exe+0x25e5a0..0x25e652): the item goes onto the cursor and HandleRemoveItemOutbound
+// takes it out of the offer (and clears both accepts). With no cursor, the item is given back the way the game returns
+// any detached item (exe+0x1ae9b0): ControllerPlayer::GiveItemToPlayer, or SendDropItemRandom at your feet when the
+// bags are full.
+bool trade_take_back(unsigned id) {
+  load_items();
+  void* e = engine(); void* c = controller();
+  if (!e || !c || !id || !g.GetTradeManager || !g.Trade_RemoveItemOutbound) return false;
+  bool in_offer = false;
+  for (const BagItem& it : trade_view().mine) if (it.id == id) in_offer = true;
+  if (!in_offer) return false;
+  bool removed = guarded("HandleRemoveItemOutbound", [&] { void* tm = g.GetTradeManager(e); if (tm) g.Trade_RemoveItemOutbound(tm, id); });
+  if (!removed) return false;
+  bool back = give_item_to_player(id);
+  if (!back && g.SendDropItemRandom) guarded("SendDropItemRandom", [&] { g.SendDropItemRandom(c, id); });
+  invalidate_objects();
+  log::writef("gameapi: trade take back {} -> {}", id, back ? "bag" : "dropped at feet");
+  return true;
+}
+// The item's own trade gate, as the bag's shift-click asks it before the add (exe+0x1eaf10: the item object's virtual
+// +0x408; refused -> the game's tagTransferStashError).
+bool trade_item_allowed(unsigned id) {
+  void* item = object_by_id(id);
+  if (!item) return false;
+  bool ok = false;
+  guarded("item vt+0x408", [&] { ok = ((bool (*)(void*))(*(void***)item)[0x408 / 8])(item); });
+  return ok;
+}
 // The merchant's stock per Market_TypeEnum (values unknown: 0..7 are probed, the non-empty ones kept).
 // Dev: what the engine's market map holds and what market_stock(id) yields (the vendor screen's id read was
 // garbage on the first live vendor, 2026-08-23: it used 340 for Kerrick, object id 19764).

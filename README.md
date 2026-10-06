@@ -339,9 +339,20 @@ other channels), and so is your own line once it is sent.
 | Ctrl+Enter | Open the chat box. Type your message (each letter is echoed, Backspace reads back what is left), Enter sends it, Escape closes the box without sending. Up / Down read earlier chat messages while you type. The game's own chat commands work, for example `/w name message` to whisper |
 | Ctrl+K | Other players: everyone in the game with their level, class and whether they are in your party; Space says how far away they are and in which direction. Enter on a player gives what the game offers for them: invite to party, remove from party (when you lead it), inspect, trade, whisper (opens the chat box addressed to them) and ban (when you host). Inspect and trade need you within about 14 units of them. The last row leaves your party when you are in one |
 
-The trade and inspect windows themselves are not read yet: a trade request goes out, but the trade window that opens
-when the other player accepts is not modelled. An invitation or trade request someone sends you arrives as the game's
-message box (yes / no).
+An invitation or trade request someone sends you arrives as the game's message box (yes / no). The inspect window is
+not read yet.
+
+The trade window (it opens when a trade request is accepted) has four Tab stops:
+
+| Stop | What is there |
+|---|---|
+| Their offer | "LadyKrypto's offer, iron bits 0, not accepted", then each item they put in (Space = its tooltip, \ = compare with what you wear) |
+| Your offer | "your offer, iron bits 0, not accepted": Enter to type how many iron bits to offer, Backspace for none. Then each item you put in: Enter takes it back to your bag |
+| Your bags | Everything in your bags: Enter offers the item |
+| Buttons | Accept and Cancel. Escape also cancels the trade |
+
+Whatever the other player does is read as it happens: "LadyKrypto added Leggings", "LadyKrypto offers 500 iron bits",
+"LadyKrypto accepted". Any change to either offer takes both accepts back, as in the game.
 
 ### Pausing
 

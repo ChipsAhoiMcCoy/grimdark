@@ -539,6 +539,22 @@ inline constexpr std::string_view kInvited = "invited";
 inline constexpr std::string_view kInviteToParty = "invite to party";   // the group window's invite (no menu tag of its own)
 inline constexpr std::string_view kLeaveParty = "leave party";
 inline constexpr std::string_view kLeftParty = "left the party";
+// ---- the trade window (screens/trade.cpp) ----
+inline constexpr std::string_view kTrade = "trade";
+inline constexpr std::string_view kTradingWith = "trading with";          // "trading with LadyKrypto"
+inline constexpr std::string_view kYourOffer = "your offer";
+inline constexpr std::string_view kTheirOffer = "offer";                  // "LadyKrypto's offer"
+inline constexpr std::string_view kYourBags = "your bags";
+inline constexpr std::string_view kAccepted = "accepted";
+inline constexpr std::string_view kNotAccepted = "not accepted";
+inline constexpr std::string_view kAdded = "added";
+inline constexpr std::string_view kRemoved = "removed";
+inline constexpr std::string_view kTakenBack = "taken back";
+inline constexpr std::string_view kOffers = "offers";                     // "LadyKrypto offers 500 iron bits"
+inline constexpr std::string_view kOfferHowMuch = "offer how many iron bits, you have";
+inline constexpr std::string_view kNoIronBits = "you have no iron bits";
+inline constexpr std::string_view kGoldRowHint = "click to offer iron bits, Backspace for none";
+
 // "Bob, level 12 Soldier, in your party, 8 away" -- one player row
 gd::core::MessageBuilder& push_player_row(gd::core::MessageBuilder& m, std::string_view name, unsigned level, std::string_view cls,
                                           bool in_party, bool leader, int distance);

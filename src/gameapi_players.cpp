@@ -152,6 +152,13 @@ std::vector<OtherPlayer> other_players() {
   return out;
 }
 
+std::string player_name(unsigned id) {
+  void* m = pmc();
+  std::string name;
+  if (m && id && g.GetPlayerName) guarded("GetPlayerName", [&] { MsvcStringW s; init_u16(s); g.GetPlayerName(m, &s, id); name = take_u16(s); });
+  return name;
+}
+
 PlayerActions player_actions(unsigned id) {
   load_players();
   PlayerActions a;

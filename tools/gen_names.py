@@ -385,6 +385,16 @@ ENTRIES = [
     ("TradeManager_AbleToTrade", "Game", r"GAME::TradeManager::AbleToTrade\(void\)"),
     ("TradeManager_HandleInitiateTradeOutbound", "Game", r"GAME::TradeManager::HandleInitiateTradeOutbound\("),
     ("GameEngine_InspectPlayer", "Game", r"GAME::GameEngine::InspectPlayer\("),
+    # ---- the trade (screens/trade.cpp, gameapi_items.cpp): GameEngine+0xe0 = TradeManager; my state +0x10, his +0x90;
+    # TradeState: +0x8 InventorySack (the offered items, copies made by HandleAddItemOutbound), +0x78 finalized, +0x7c gold ----
+    ("TradeManager_GetMyTradeState", "Game", r"GAME::TradeManager::GetMyTradeState\(void\)"),
+    ("TradeManager_GetHisTradeState", "Game", r"GAME::TradeManager::GetHisTradeState\(void\)"),
+    ("TradeManager_GetTradePartner", "Game", r"GAME::TradeManager::GetTradePartner\(void\)"),
+    ("TradeManager_GetIsTradeActive", "Game", r"GAME::TradeManager::GetIsTradeActive\(void\)"),
+    ("TradeManager_HandleRemoveItemOutbound", "Game", r"GAME::TradeManager::HandleRemoveItemOutbound\("),
+    ("TradeState_GetGoldAmount", "Game", r"GAME::TradeState::GetGoldAmount\(void\)"),
+    ("TradeState_GetFinalized", "Game", r"GAME::TradeState::GetFinalized\(void\)"),
+    ("TradeState_GetInventorySack", "Game", r"GAME::TradeState::GetInventorySack\(void\)"),
     ("GameEngine_InvitePlayerToParty", "Game", r"GAME::GameEngine::InvitePlayerToParty\("),
     ("GameEngine_AddPlayerToParty", "Game", r"GAME::GameEngine::AddPlayerToParty\("),
     ("GameEngine_BanPlayer", "Game", r"GAME::GameEngine::BanPlayer\("),

@@ -307,6 +307,18 @@ bool pet_move(unsigned pet_id, const world::Vec3& world_pos);
 bool release_pet(unsigned pet_id);               // Disband Pet
 std::string dump_pets();
 
+// ---- The trade (gameapi_items.cpp; the window side is exe_ui) ----
+struct TradeView {
+  bool active = false;
+  unsigned partner = 0;                       // the other player's id
+  std::vector<BagItem> mine, theirs;          // the offers (copies of the items, their own ids)
+  unsigned my_gold = 0, their_gold = 0;
+  bool my_accepted = false, their_accepted = false;
+};
+TradeView trade_view();
+bool trade_take_back(unsigned id);              // one of your offered items back to your bag (at your feet if the bags are full)
+bool trade_item_allowed(unsigned id);           // the item's own trade gate (what the bag's shift-click asks first)
+
 // ---- Other players (gameapi_players.cpp): the party portrait menu and the group window's actions, exports only ----
 struct OtherPlayer {
   unsigned id = 0;            // the player's object id (what every action takes)
@@ -323,6 +335,7 @@ struct PlayerActions { bool inspect = false, trade = false, whisper = false, inv
 enum class PlayerResult { Done, TooFar, Refused, Failed };
 bool is_multiplayer();                          // a network client, or a host with someone else in the game
 std::vector<OtherPlayer> other_players();       // everyone in the game but you, the game's order
+std::string player_name(unsigned id);           // a player's name by id ("" when unknown)
 PlayerActions player_actions(unsigned id);      // which of the menu's actions the game would offer for this player
 PlayerResult inspect_player(unsigned id);       // within 14 units
 PlayerResult trade_with(unsigned id);           // TradeManager::AbleToTrade, within 14 units: sends the trade request

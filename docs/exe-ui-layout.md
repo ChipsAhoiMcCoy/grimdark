@@ -282,3 +282,19 @@ framework-A widgets held at fixed screen members (pointers read live, cross-chec
 - Event 8 (the party portrait's Whisper, exe+0x25276a): GameEvent {int 8; u16string name} through `EventManager::Send(ev,
   8)`; the listener exe+0x1612e0 shows the window and types "/<whisper command> <name> " (tagChatCommand*) into the box.
 - The key action 5 (Chat, Enter) presses the HUD button `+0xaab8`; the button's pressed byte `+0xad3a` follows the window.
+
+## Trade (static RE 2026-10-06 + a read-only live peek; docs/devlog.md 2026-10-06)
+- The window: InGameUI `+0x29cc8`, ctor exe+0x25ef90, vtable exe+0x31c998 (`+0x38` HandleMouseEvent exe+0x25f720, `+0x48`
+  Update exe+0x25f8c0, `+0xb0` Show exe+0x260ad0 -- hiding it cancels the trade). Members: `+0x90` listener (vtable
+  exe+0x31ca80, slot 0 exe+0x260090), `+0xc0` registry, `+0x108` close button, `+0x440` Accept and `+0x7f0` Cancel
+  (TextButtons), `+0xba0/+0xec8/+0xfc0/+0x10b8` text elements, `+0xcf8` the gold edit box (text `+0xd68`), `+0xd38` gold
+  over your money (Accept refused), `+0xb8` the last gold value sent, `+0x11b0/+0x13d0` the two item grids (ctor
+  exe+0x25d2a0), `+0x1850/+0x1858` the gold +/- repeat timers.
+- The model is Game.dll's: GameEngine `+0xe0` TradeManager (`+0x10` my TradeState, `+0x90` the partner's, `+0x111` active,
+  `+0x114` partner id); TradeState `+0x8` InventorySack, `+0x78` finalized, `+0x7c` gold. All through exports.
+- Add (the bag's shift-click while trading, exe+0x1eaf0a): the item's vt+0x408 gate (refused -> tagTransferStashError),
+  then exe+0x260d50(unused, id): not bound (+0xc00 / +0xc02 on the item), `HandleAddItemOutbound(Vec2{0,0}, id)` (a copy
+  into my sack, the partner's accept cleared, the packet), the item's vt+0x410, `SendRemoveItemFromInventory`.
+- Remove (the trade grid's click, exe+0x25e5a0): the item onto the cursor (source 4) and `HandleRemoveItemOutbound(id)`.
+- Gold: Update parses the box text with atoi, clamps to `Character::GetCurrentMoney`, and on a change calls
+  `HandleSetGoldAmountOutbound`. Accept = `HandleFinalizeTradeOutbound` (sets my finalized; completes when both are).

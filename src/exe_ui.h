@@ -165,6 +165,13 @@ struct WindowB {
   void show(bool on) const;  // vtable +0xb0
 };
 WindowB ingame_window(unsigned off);   // InGameUI + off (kWin* below)
+// ---- the trade window (InGameUI+0x29cc8; docs/exe-ui-layout.md "Trade") ----
+bool trade_open();
+bool trade_press(bool accept);            // the window's Accept (refused while the gold is over your money) or Cancel, through its registry
+std::string trade_button_caption(bool accept);
+bool trade_gold_invalid();                // the window's "gold over your money" byte: Accept is refused while it is set
+bool trade_set_gold(unsigned amount);     // the gold box's text; the window offers it on its next Update (clamped by the game)
+bool trade_quick_add(unsigned item_id);   // the bag's shift-click while trading (exe+0x260d50): the game's gate + HandleAddItemOutbound
 // ---- the chat window (InGameUI+0x4df00): open = its input box is up and has the game's keyboard focus ----
 bool chat_open();
 std::string chat_input();     // what has been typed so far (colour codes stripped)

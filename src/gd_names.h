@@ -1051,6 +1051,30 @@ inline constexpr const char* TradeManager_HandleInitiateTradeOutbound = "?Handle
 // public: void __cdecl GAME::GameEngine::InspectPlayer(unsigned int) __ptr64
 inline constexpr const char* GameEngine_InspectPlayer_DLL = "Game.dll";
 inline constexpr const char* GameEngine_InspectPlayer = "?InspectPlayer@GameEngine@GAME@@QEAAXI@Z";
+// public: class GAME::TradeState & __ptr64 __cdecl GAME::TradeManager::GetMyTradeState(void) __ptr64
+inline constexpr const char* TradeManager_GetMyTradeState_DLL = "Game.dll";
+inline constexpr const char* TradeManager_GetMyTradeState = "?GetMyTradeState@TradeManager@GAME@@QEAAAEAVTradeState@2@XZ";
+// public: class GAME::TradeState & __ptr64 __cdecl GAME::TradeManager::GetHisTradeState(void) __ptr64
+inline constexpr const char* TradeManager_GetHisTradeState_DLL = "Game.dll";
+inline constexpr const char* TradeManager_GetHisTradeState = "?GetHisTradeState@TradeManager@GAME@@QEAAAEAVTradeState@2@XZ";
+// public: unsigned int __cdecl GAME::TradeManager::GetTradePartner(void)const __ptr64
+inline constexpr const char* TradeManager_GetTradePartner_DLL = "Game.dll";
+inline constexpr const char* TradeManager_GetTradePartner = "?GetTradePartner@TradeManager@GAME@@QEBAIXZ";
+// public: bool __cdecl GAME::TradeManager::GetIsTradeActive(void)const __ptr64
+inline constexpr const char* TradeManager_GetIsTradeActive_DLL = "Game.dll";
+inline constexpr const char* TradeManager_GetIsTradeActive = "?GetIsTradeActive@TradeManager@GAME@@QEBA_NXZ";
+// public: bool __cdecl GAME::TradeManager::HandleRemoveItemOutbound(unsigned int) __ptr64
+inline constexpr const char* TradeManager_HandleRemoveItemOutbound_DLL = "Game.dll";
+inline constexpr const char* TradeManager_HandleRemoveItemOutbound = "?HandleRemoveItemOutbound@TradeManager@GAME@@QEAA_NI@Z";
+// public: unsigned int __cdecl GAME::TradeState::GetGoldAmount(void)const __ptr64
+inline constexpr const char* TradeState_GetGoldAmount_DLL = "Game.dll";
+inline constexpr const char* TradeState_GetGoldAmount = "?GetGoldAmount@TradeState@GAME@@QEBAIXZ";
+// public: bool __cdecl GAME::TradeState::GetFinalized(void)const __ptr64
+inline constexpr const char* TradeState_GetFinalized_DLL = "Game.dll";
+inline constexpr const char* TradeState_GetFinalized = "?GetFinalized@TradeState@GAME@@QEBA_NXZ";
+// public: class GAME::InventorySack & __ptr64 __cdecl GAME::TradeState::GetInventorySack(void) __ptr64
+inline constexpr const char* TradeState_GetInventorySack_DLL = "Game.dll";
+inline constexpr const char* TradeState_GetInventorySack = "?GetInventorySack@TradeState@GAME@@QEAAAEAVInventorySack@2@XZ";
 // public: void __cdecl GAME::GameEngine::InvitePlayerToParty(unsigned int,int) __ptr64
 inline constexpr const char* GameEngine_InvitePlayerToParty_DLL = "Game.dll";
 inline constexpr const char* GameEngine_InvitePlayerToParty = "?InvitePlayerToParty@GameEngine@GAME@@QEAAXIH@Z";

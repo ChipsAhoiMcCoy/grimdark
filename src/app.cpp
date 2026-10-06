@@ -48,6 +48,7 @@
 #include "screens/sound_glossary.h"
 #include "screens/pets.h"
 #include "screens/players.h"
+#include "screens/trade.h"
 #include "gameapi.h"
 #include "speech.h"
 #include "update_check.h"
@@ -348,6 +349,7 @@ void init() {
   g_screens.register_screen(screens::make_corrupted_shrine());
   g_screens.register_screen(screens::make_vendor());
   g_screens.register_screen(screens::make_stash());
+  g_screens.register_screen(screens::make_trade());
   g_screens.register_screen(screens::make_hotbar_manager());
   g_screens.register_screen(screens::make_pet_overlay());
   g_screens.register_screen(screens::make_players());

@@ -97,8 +97,10 @@ const Signature kSignatures[] = {
   {0x17ea10, "Star::HandleMouseEvent", "\x48\x8b\xc4\x55\x56\x57\x41\x54\x41\x55\x41\x56\x41\x57\x48\x81"},
   {0xb5090, "row list HandleMouseEvent", "\x48\x8b\xc4\x57\x48\x81\xec\xd0\x00\x00\x00\x48\xc7\x44\x24\x20"},
   {0xe5bf0, "multiplayer server-list listener", "\x48\x39\x91\x68\x06\x00\x00\x75\x33\x80\xba\x19\x02\x00\x00\x00"},   // cmp [rcx+0x668],rdx; cmp byte [rdx+0x219],0
+  {0x260d50, "trade quick add", "\x48\x89\x5c\x24\x10\x48\x89\x74\x24\x18\x48\x89\x4c\x24\x08\x57"},
+  {0x260090, "trade window listener", "\x48\x83\xec\x28\x85\xd2\x0f\x85\x91\x00\x00\x00\x48\x8d\x81\xb0"},   // test edx,edx; lea rax,[rcx+0x3b0] (Accept)
 };
-const size_t kSignatureLens[] = {5, 16, 12, 12, 12, 12, 12, 12, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16};   // each <= kSignatureMax
+const size_t kSignatureLens[] = {5, 16, 12, 12, 12, 12, 12, 12, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16};   // each <= kSignatureMax
 static_assert(std::size(kSignatureLens) == std::size(kSignatures), "one length per signature");
 constexpr size_t kSignatureMax = 16;
 
@@ -652,6 +654,66 @@ std::string map_nuggets_dump(int maxn) {
 }
 void WindowB::show(bool on) const { if (p) call_void_bool(p, off::kVt_Show, on); }
 WindowB ingame_window(unsigned o) { void* ui = ingame_ui(); return ui ? WindowB{(char*)ui + o} : WindowB{}; }
+
+// ---- the trade window (static RE 2026-10-06; docs/exe-ui-layout.md "Trade"): InGameUI+0x29cc8, ctor exe+0x25ef90,
+// vtable exe+0x31c998. Its listener (exe+0x260090, `this` = window+0x90) acts on event 0 of: the Accept TextButton +0x440
+// (refused while the "gold over your money" byte +0xd38 is set) -> TradeManager::HandleFinalizeTradeOutbound; the close
+// button +0x108 and the Cancel TextButton +0x7f0 -> HandleCancelTradeOutbound. Registry +0xc0. The gold box is an edit at
+// +0xcf8 whose text (+0xd68) Update (exe+0x25f8c0) atoi's every frame: a new value up to your money is offered
+// (HandleSetGoldAmountOutbound), more offers 0 and sets +0xd38. The bag's shift-click while trading is exe+0x260d50(id):
+// the bound-item gate (+0xc00 / +0xc02 on the item), HandleAddItemOutbound, then SendRemoveItemFromInventory. ----
+namespace {
+constexpr uintptr_t kTrade_Vtable = 0x31c998, kTrade_QuickAdd = 0x260d50;
+constexpr size_t kTrade_Registry = 0xc0, kTrade_Accept = 0x440, kTrade_Cancel = 0x7f0, kTrade_GoldText = 0xd68, kTrade_GoldInvalid = 0xd38;
+void* trade_window() {
+  void* ui = ingame_ui();
+  void* w = ui ? (char*)ui + ingame::kTrade : nullptr;
+  return w && vtable_rva_of(w) == kTrade_Vtable ? w : nullptr;
+}
+typedef bool (*QuickAddFn)(void*, unsigned);
+bool call_quick_add(QuickAddFn f, unsigned id, bool& out) {
+  __try { out = f(nullptr, id); return true; } __except (EXCEPTION_EXECUTE_HANDLER) { return false; }   // `this` is unused (exe+0x260d50)
+}
+bool write_digits(void* str, const char16_t* digits, size_t n) {
+  __try {
+    MsvcStringW* s = (MsvcStringW*)str;
+    if (n > s->capacity) return false;
+    char16_t* d = s->capacity < 8 ? s->u.buf : s->u.ptr;
+    if (!d) return false;
+    for (size_t i = 0; i < n; ++i) d[i] = digits[i];
+    d[n] = 0;
+    s->size = n;
+    return true;
+  } __except (EXCEPTION_EXECUTE_HANDLER) { return false; }
+}
+}  // namespace
+bool trade_open() { void* w = trade_window(); return w && available() && WindowB{w}.visible(); }
+bool trade_press(bool accept) {
+  void* w = trade_window();
+  if (!w || !available()) return false;
+  if (accept && rd_or<uint8_t>(w, kTrade_GoldInvalid, 0)) return false;
+  return WidgetB{(char*)w + (accept ? kTrade_Accept : kTrade_Cancel)}.press((char*)w + kTrade_Registry);
+}
+std::string trade_button_caption(bool accept) { void* w = trade_window(); return w ? WidgetB{(char*)w + (accept ? kTrade_Accept : kTrade_Cancel)}.text() : std::string(); }
+bool trade_gold_invalid() { void* w = trade_window(); return w && rd_or<uint8_t>(w, kTrade_GoldInvalid, 0) != 0; }
+// The gold box's text, set in place (no allocation: within the string's own capacity -- the 7-character small buffer for
+// any amount up to 9,999,999); the window's next Update parses and offers it, as when the player types.
+bool trade_set_gold(unsigned amount) {
+  void* w = trade_window();
+  if (!w || !available()) return false;
+  std::string d = std::to_string(amount);
+  std::u16string u(d.begin(), d.end());
+  bool ok = write_digits((char*)w + kTrade_GoldText, u.data(), u.size());
+  log::writef("exe_ui: trade gold text {} ok={}", d, ok);
+  return ok;
+}
+bool trade_quick_add(unsigned item_id) {
+  if (!trade_open()) return false;
+  bool added = false;
+  bool ok = call_quick_add((QuickAddFn)(g_base + kTrade_QuickAdd), item_id, added);
+  log::writef("exe_ui: trade quick add {} ok={} added={}", item_id, ok, added);
+  return ok && added;
+}
 
 // ---- the chat window (static RE 2026-10-05; docs/exe-ui-layout.md "Chat"): InGameUI+0x4df00, ctor exe+0x160360,
 // vtable exe+0x3152f8. Show(true) (exe+0x165260) registers its edit box (+0xa8) with the world UI's keyboard focus

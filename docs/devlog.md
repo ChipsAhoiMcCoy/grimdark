@@ -1235,9 +1235,10 @@ CLAUDE.md "Traps and lessons"; the mechanism docs are `docs/*.md`.
   exports: `gameapi_players.cpp`. Whisper = GameEvent 8 {8, u16 name}, whose listener (exe+0x1612e0, registered at chat
   +0x1c20) opens the box typed "/Tell Chips " -- verified live with our own id. Nothing else could be run alone; the
   trade window (+0x29cc8) and the inspect window (+0x52258) are not modelled.
-- Drop (verified live): `SendDropItemRandom` alone never took the item out of the bag grid; the cursor pickup does that
-  (no command -- the exe's only SendRemoveItemFromInventory callers are destroy, reagents and the market) and the
-  drop sends the RemoveInventoryItemConfigCmd itself. `drop_item` = grid removal + SendDropItemRandom. Leather Helm went
+- Drop (verified live): the cursor pickup takes the item out of the bag grid (no command -- the exe's
+  SendRemoveItemFromInventory callers are destroy, reagents, the market and the trade add) and the drop sends the
+  RemoveInventoryItemConfigCmd itself, so `drop_item` = grid removal + SendDropItemRandom. That SendDropItemRandom
+  alone would leave the item in the grid is INFERRED from that, not observed. Leather Helm went
   1.8 u away as a new object (42054), hidden by the loot filter (common), so G skipped it; O + G put it back.
 - Leaving: the unsupported screen now logs `exe_ui::state_summary()` when it becomes current. Exit to Main Menu on the
   LAN host: "app_state=1 requested=0 world_screen=false ingame_ui=false dialog=false popup=false root:" for ~100 ms, then
@@ -1250,3 +1251,21 @@ CLAUDE.md "Traps and lessons"; the mechanism docs are `docs/*.md`.
   explains the earlier friend-join report ("password box ... screen not supported", 2026-10-05 above). Both now take 7.
 - Also: the pause menu is re-announced for a few frames after Yes on "exit to the main menu" (pre-existing, not fixed).
   `tools/pdata.py` had another machine's path baked in; it now finds the dump relative to itself.
+
+## 2026-10-06 -- the trade window (static RE + one read-only live peek; built, NOT run)
+- The user had a trade open with another player (LadyKrypto) and turned the dev server on from F1; read-only routes
+  only (`/ingame`, `/peek`, `/obj`, `/loc`), no input, no reload. `/ingame`: Trade +0x29cc8 visible beside the
+  inventory. GameEngine+0xe0 = TradeManager (`GetTradeManager`): +0x111 active, +0x114 partner (10797 = her id),
+  my TradeState +0x10, hers +0x90; TradeState +0x8 InventorySack, +0x78 finalized, +0x7c gold (the exported accessors
+  are one-instruction bodies, read with capstone since several are COMDAT-shared). Her sack held one node, id 57350 =
+  records/items/gearlegs/a02_legs01.dbr ("Leggings"); mine was empty; both 0 gold, neither accepted.
+- Static RE (docs/exe-ui-layout.md "Trade"): the window's listener exe+0x260090 (Accept +0x440 -> Finalize unless
+  +0xd38; Cancel +0x7f0 and close +0x108 -> HandleCancelTradeOutbound); Update exe+0x25f8c0 atoi's the gold box text
+  +0xd68 every frame and offers it (clamped to your money; over -> 0 and +0xd38); the bag's shift-click while trading
+  = exe+0x260d50(id) after the item's vt+0x408 gate; the trade grid's pick-up (exe+0x25e5a0) = cursor +
+  `HandleRemoveItemOutbound`. `HandleAddItemOutbound` puts a COPY (Item::CreateItem) in the sack and clears the
+  partner's accept; `HandleRemoveItemOutbound` clears both. The RemoveItem / Finalize imports were missed by
+  `exe_dis.py xref` (its linear sweep desyncs there); a raw disp32 scan over the dump found them (exe+0x25e652,
+  exe+0x2600c7).
+- `screens/trade.cpp` + `gameapi::trade_view / trade_take_back / trade_item_allowed` + `exe_ui::trade_*`; two new
+  signatures (exe+0x260d50, exe+0x260090). Built into build/check (the game held build/ninja's DLL); gdcore_tests pass.
