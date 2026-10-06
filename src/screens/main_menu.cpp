@@ -5,6 +5,7 @@
 #include "screens/controls.h"
 #include "core/message_builder.h"
 #include "gameapi.h"
+#include "log.h"
 #include "speech.h"
 
 namespace gd::screens {
@@ -82,7 +83,7 @@ class UnsupportedScreen : public Screen {
   // Silent entirely until a modelled screen has been current once: the game always opens on its title
   // screen (the "Grim Dawn (c) Crate" text, ~1.5 s before the main menu), which is not modelled on purpose.
   std::string screen_name() const override { return {}; }
-  void on_focus() override { Screen::on_focus(); frames_ = 0; }
+  void on_focus() override { Screen::on_focus(); frames_ = 0; log::writef("unsupported: {}", exe_ui::state_summary()); }
   void on_unfocus() override { Screen::on_unfocus(); seen_modelled_ = true; }   // something else took over: we are past the title
   void on_update() override {
     if (frames_ >= 0 && ++frames_ == kDebounceFrames) {
@@ -91,7 +92,7 @@ class UnsupportedScreen : public Screen {
       // read never shows a modelled screen, so this precedes the title gate), then the fallback keeps the
       // keyboard with the game.
       if (!exe_ui::available() && !version_warned_) { version_warned_ = true; speech::speak(strings::kUnsupportedGameVersion, false); }
-      else if (seen_modelled_) speech::speak(strings::kUnsupportedScreen, false);
+      else if (seen_modelled_) { speech::speak(strings::kUnsupportedScreen, false); log::writef("unsupported (announced): {}", exe_ui::state_summary()); }
     }
   }
   int layer() const override { return -1; }

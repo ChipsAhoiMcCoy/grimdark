@@ -360,6 +360,37 @@ ENTRIES = [
     ("Player_GetCompatibleItems", "Game", r"GAME::Player::GetCompatibleItems\("),
     ("Character_UseItemOn", "Game", r"GAME::Character::UseItemOn\("),
     ("ControllerCharacter_SendDropItemRandom", "Game", r"GAME::ControllerCharacter::SendDropItemRandom\("),
+    # ---- chat (src/chat.cpp): the chat window pulls every incoming line from the engine's pending list each frame
+    # (exe+0x1644cd); ChatMessage = {u16 name, u16 text, u8 type (0 all, 1 party, 2 whisper), Entity*}, stride 0x50.
+    # AddChatMessage is what an inbound network line does (dev: inject a line). ----
+    ("GameEngine_RemovePendingMessages", "Game", r"GAME::GameEngine::RemovePendingMessages\("),
+    ("GameEngine_AddChatMessage", "Game", r"GAME::GameEngine::AddChatMessage\("),
+    # ---- other players (src/gameapi_players.cpp): the party portrait menu (exe+0x252470) and the group window
+    # (exe+0x2035d8), from exports alone ----
+    ("GameEngine_GetPlayerManagerClient", "Game", r"GAME::GameEngine::GetPlayerManagerClient\(void\)"),
+    ("PlayerManagerClient_GetAllPlayersInGame", "Game", r"GAME::PlayerManagerClient::GetAllPlayersInGame\(void\)"),
+    ("PlayerManagerClient_GetPlayerName", "Game", r"GAME::PlayerManagerClient::GetPlayerName\(unsigned int\)"),
+    ("PlayerManagerClient_GetPlayerClass", "Game", r"GAME::PlayerManagerClient::GetPlayerClass\(unsigned int\)"),
+    ("PlayerManagerClient_GetPlayerLevel", "Game", r"GAME::PlayerManagerClient::GetPlayerLevel\(unsigned int\)"),
+    ("PlayerManagerClient_GetPlayerLocation", "Game", r"GAME::PlayerManagerClient::GetPlayerLocation\(unsigned int\)"),
+    ("GameEngine_GetPlayerId", "Game", r"GAME::GameEngine::GetPlayerId\(void\)"),
+    ("GameEngine_IsServerOrSingle", "Game", r"GAME::GameEngine::IsServerOrSingle\(void\)"),
+    ("GameEngine_GetPartyManager", "Game", r"GAME::GameEngine::GetPartyManager\(void\)"),
+    ("PartyManager_GetPartyMembers", "Game", r"GAME::PartyManager::GetPartyMembers\("),
+    ("PartyManager_AttemptToKickFromLocalParty", "Game", r"GAME::PartyManager::AttemptToKickFromLocalParty\("),
+    ("Player_GetPartyId", "Game", r"GAME::Player::GetPartyId\(void\)"),
+    ("Engine_GetGameInfo", "Engine", r"GAME::Engine::GetGameInfo\(void\)"),
+    ("GameInfo_GetAutoParty", "Engine", r"GAME::GameInfo::GetAutoParty\(void\)"),
+    ("GameEngine_GetTradeManager", "Game", r"GAME::GameEngine::GetTradeManager\(void\)"),
+    ("TradeManager_AbleToTrade", "Game", r"GAME::TradeManager::AbleToTrade\(void\)"),
+    ("TradeManager_HandleInitiateTradeOutbound", "Game", r"GAME::TradeManager::HandleInitiateTradeOutbound\("),
+    ("GameEngine_InspectPlayer", "Game", r"GAME::GameEngine::InspectPlayer\("),
+    ("GameEngine_InvitePlayerToParty", "Game", r"GAME::GameEngine::InvitePlayerToParty\("),
+    ("GameEngine_AddPlayerToParty", "Game", r"GAME::GameEngine::AddPlayerToParty\("),
+    ("GameEngine_BanPlayer", "Game", r"GAME::GameEngine::BanPlayer\("),
+    # the portrait menu's Whisper: GameEvent 8 {int type, u16string name} -> the chat window's listener (exe+0x1612e0)
+    # opens the box with "/w <name> " typed
+    ("EventManager_Get", "Engine", r"GAME::Singleton<class GAME::EventManager>::Get\(void\)"),
     ("Item_GetUIDisplayText", "Game", r"GAME::Item::GetUIDisplayText\("),
     ("Item_GetSimpleUIDisplayText", "Game", r"GAME::Item::GetSimpleUIDisplayText\("),
     ("Item_GetStackSize", "Game", r"GAME::Item::GetStackSize\(void\)"),

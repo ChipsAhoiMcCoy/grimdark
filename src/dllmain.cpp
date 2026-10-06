@@ -11,6 +11,7 @@
 #include "combat.h"
 #include "gameapi.h"
 #include "notify.h"
+#include "chat.h"
 #include "quest_rewards.h"
 #include "rooms.h"
 #include "db.h"
@@ -68,6 +69,7 @@ static DWORD WINAPI init_thread(LPVOID) {
   gd::telegraph::init();   // dev: skip the cast instrumentation
   gd::gameapi::install_crafting_hooks();
   gd::notify::install();
+  gd::chat::install();
   gd::quest_rewards::install();
   gd::exe_ui::install();
   gd::audio::init();
@@ -102,6 +104,7 @@ extern "C" __declspec(dllexport) DWORD WINAPI grimdark_unload(LPVOID) {
   gd::casts::remove();
   gd::combat::remove();
   gd::notify::remove();
+  gd::chat::remove();
   gd::quest_rewards::remove();
   gd::voice::shutdown();  // joins the worker before the mixer it feeds goes away
   gd::audio::shutdown();

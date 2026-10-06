@@ -6,10 +6,12 @@
 #include "core/message_builder.h"
 #include "core/navigator.h"
 #include "core/strings.h"
+#include "chat.h"
 #include "combat.h"
 #include "rooms.h"
 #include "hooks.h"
 #include "log.h"
+#include "screens/chat_box.h"
 #include "screens/conversation.h"
 #include "screens/create_character.h"
 #include "screens/delete_character.h"
@@ -45,6 +47,7 @@
 #include "screens/mod_options.h"
 #include "screens/sound_glossary.h"
 #include "screens/pets.h"
+#include "screens/players.h"
 #include "gameapi.h"
 #include "speech.h"
 #include "update_check.h"
@@ -142,6 +145,15 @@ static void register_actions() {
   // receiving one. Each is silent when its screen is not the current one.
   m.register_action("window.ctrlEnter", "Sell part of a stack / receiving bag", InputCategory::Windows, [] { screens::sell_partial_focused(); screens::set_receiving_bag_focused(); }).bind(keys::Enter, true, false, false);
   m.register_action("assign.secondary", "Assign to right mouse", InputCategory::Windows, [] { screens::assign_focused(-1); }).bind(0x17, true, false, false);
+  // Delete on a bag item in the inventory: drop it on the ground at your feet (silent in the other windows).
+  m.register_action("window.drop", "Drop item", InputCategory::Windows, [] { screens::drop_focused_item(); }).bind(0x81);
+  // Chat: Ctrl+Up / Ctrl+Down review the chat history in the world (src/chat.cpp; Up / Down do it while typing).
+  // The box itself opens with Ctrl+Enter, the game's own chat key lifted below.
+  m.register_action("chat.prev", "Previous chat message", InputCategory::InGame, [] { chat::review(-1); }).bind(keys::Up, true, false, false);
+  m.register_action("chat.next", "Next chat message", InputCategory::InGame, [] { chat::review(1); }).bind(keys::Down, true, false, false);
+  // Ctrl+K = the other players (screens/players.cpp): the party portrait menu and the group window's actions for each
+  // player in the game. It replaces the lift of the game's own group window, which the mod does not read.
+  m.register_action("ingame.players", "Other players", InputCategory::InGame, [] { screens::open_players(); }).bind(0x25, true, false, false);
   m.register_action("ingame.where", "Where am I", InputCategory::InGame, [] { screens::speak_where(); }).bind(keys::P, true, true).bind(0x25);  // K
   // Health and energy in full, in the player's own voice (bare H; Ctrl+H stays the game's Help window).
   m.register_action("ingame.vitals", "Health and energy", InputCategory::InGame, [] { combat::speak_vitals(); }).bind(0x23);
@@ -264,7 +276,7 @@ static void register_actions() {
   struct Lift { const char* id; const char* label; int code; char16_t ch; };
   const Lift lifted[] = {
     {"game.character", "Character window", 0x2e, u'c'}, {"game.skills", "Skill window", 0x31, u'n'}, {"game.codex", "Codex window", 0x10, u'q'},
-    {"game.map", "Map window", 0x32, u'm'}, {"game.lootFilter", "Loot filter window", 0x18, u'o'}, {"game.group", "Group window", 0x25, u'k'},
+    {"game.map", "Map window", 0x32, u'm'}, {"game.lootFilter", "Loot filter window", 0x18, u'o'},
     {"game.gameMenu", "Game menu", 0x22, u'g'}, {"game.help", "Help window", 0x23, u'h'}, {"game.factions", "Factions window", 0x24, u'j'},
     {"game.achievements", "Achievements window", 0x2f, u'v'}, {"game.riftgate", "Personal riftgate", 0x26, u'l'}, {"game.drop", "Drop item", 0x30, u'b'},
     {"game.tooltips", "Show item tooltips", 0x2d, u'x'}, {"game.showItems", "Show items (filter common)", 0x2c, u'z'},
@@ -319,6 +331,7 @@ void init() {
   g_screens.register_screen(screens::make_message_box());
   g_screens.register_screen(screens::make_pause_menu());
   g_screens.register_screen(screens::make_loading());
+  g_screens.register_screen(screens::make_leaving());
   g_screens.register_screen(screens::make_tip());
   g_screens.register_screen(screens::make_conversation());
   g_screens.register_screen(screens::make_codex());
@@ -337,6 +350,8 @@ void init() {
   g_screens.register_screen(screens::make_stash());
   g_screens.register_screen(screens::make_hotbar_manager());
   g_screens.register_screen(screens::make_pet_overlay());
+  g_screens.register_screen(screens::make_players());
+  g_screens.register_screen(screens::make_chat());
   g_screens.register_screen(screens::make_announcements_overlay());
   g_screens.register_screen(screens::make_cue_settings_overlay());
   g_screens.register_screen(screens::make_mod_menu());

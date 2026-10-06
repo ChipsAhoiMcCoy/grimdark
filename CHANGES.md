@@ -7,6 +7,14 @@
 - Fix: the password box that appears when you join a password-protected game is now read. Press `down` from the message to reach the password, `enter` to start typing, `enter` to stop, then choose Ok. `escape` cancels.
   - Joining with the right password has not been tried yet.
 - Fix: the message the game shows when it refuses to let you join a game (for example "This game is using an incompatible game mode") is now read, with its Ok button.
+- Chat in multiplayer: chat messages from other players are read as they arrive, with "whisper" or "party" in front when they are not for everyone. `ctrl up` and `ctrl down` go back through the chat messages.
+- New: `ctrl enter` opens the chat box. Type your message (each letter is read, `backspace` reads back what is left), `enter` sends it, `escape` closes the box. `up` and `down` read the chat messages while you type.
+- New key `delete` in the inventory: drops the item you are on to the ground at your feet. `g` or `m` finds it again; an item your loot filter hides needs `o` first.
+- New key `ctrl k` in multiplayer: the other players in the game, with their level, class and whether they are in your party. `space` says where they are, `enter` lists what you can do: invite to party, remove from party, inspect, trade, whisper and ban, whichever the game allows for that player. `ctrl k` used to open the game's own group window, which the mod did not read.
+  - Only whisper has been tried, and only alone. Inviting, removing, inspecting, trading and banning need another player and have not been tried. The trade and inspect windows themselves are not read yet.
+- Fix: leaving the game with Exit to Main Menu no longer says "this screen is not supported" on the way out. If leaving takes a while, you hear "leaving the game".
+- Fix: joining a multiplayer game is no longer "this screen is not supported" while the game connects; the connecting message and a password prompt that comes after it are read.
+  - Not tried in the game yet: joining needs someone else's game.
 
 # 0.5.2 (2026-10-02)
 

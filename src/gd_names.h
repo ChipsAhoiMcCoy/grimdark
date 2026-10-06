@@ -991,6 +991,78 @@ inline constexpr const char* Character_UseItemOn = "?UseItemOn@Character@GAME@@Q
 // public: void __cdecl GAME::ControllerCharacter::SendDropItemRandom(unsigned int) __ptr64
 inline constexpr const char* ControllerCharacter_SendDropItemRandom_DLL = "Game.dll";
 inline constexpr const char* ControllerCharacter_SendDropItemRandom = "?SendDropItemRandom@ControllerCharacter@GAME@@QEAAXI@Z";
+// public: void __cdecl GAME::GameEngine::RemovePendingMessages(class mem::vector<struct GAME::ChatMessage> & __ptr64) __ptr64
+inline constexpr const char* GameEngine_RemovePendingMessages_DLL = "Game.dll";
+inline constexpr const char* GameEngine_RemovePendingMessages = "?RemovePendingMessages@GameEngine@GAME@@QEAAXAEAV?$vector@UChatMessage@GAME@@@mem@@@Z";
+// public: void __cdecl GAME::GameEngine::AddChatMessage(class std::basic_string<unsigned short,struct std::char_traits<unsigned short>,class std::allocator<unsigned short> > const & __ptr64,class std::basic_string<unsigned
+inline constexpr const char* GameEngine_AddChatMessage_DLL = "Game.dll";
+inline constexpr const char* GameEngine_AddChatMessage = "?AddChatMessage@GameEngine@GAME@@QEAAXAEBV?$basic_string@GU?$char_traits@G@std@@V?$allocator@G@2@@std@@0EPEAVEntity@2@@Z";
+// public: class GAME::PlayerManagerClient * __ptr64 __cdecl GAME::GameEngine::GetPlayerManagerClient(void)const __ptr64
+inline constexpr const char* GameEngine_GetPlayerManagerClient_DLL = "Game.dll";
+inline constexpr const char* GameEngine_GetPlayerManagerClient = "?GetPlayerManagerClient@GameEngine@GAME@@QEBAPEAVPlayerManagerClient@2@XZ";
+// public: class mem::vector<unsigned int> const & __ptr64 __cdecl GAME::PlayerManagerClient::GetAllPlayersInGame(void)const __ptr64
+inline constexpr const char* PlayerManagerClient_GetAllPlayersInGame_DLL = "Game.dll";
+inline constexpr const char* PlayerManagerClient_GetAllPlayersInGame = "?GetAllPlayersInGame@PlayerManagerClient@GAME@@QEBAAEBV?$vector@I@mem@@XZ";
+// public: class std::basic_string<unsigned short,struct std::char_traits<unsigned short>,class std::allocator<unsigned short> > __cdecl GAME::PlayerManagerClient::GetPlayerName(unsigned int)const __ptr64
+inline constexpr const char* PlayerManagerClient_GetPlayerName_DLL = "Game.dll";
+inline constexpr const char* PlayerManagerClient_GetPlayerName = "?GetPlayerName@PlayerManagerClient@GAME@@QEBA?AV?$basic_string@GU?$char_traits@G@std@@V?$allocator@G@2@@std@@I@Z";
+// public: class std::basic_string<char,struct std::char_traits<char>,class std::allocator<char> > __cdecl GAME::PlayerManagerClient::GetPlayerClass(unsigned int)const __ptr64
+inline constexpr const char* PlayerManagerClient_GetPlayerClass_DLL = "Game.dll";
+inline constexpr const char* PlayerManagerClient_GetPlayerClass = "?GetPlayerClass@PlayerManagerClient@GAME@@QEBA?AV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@I@Z";
+// public: class std::basic_string<unsigned short,struct std::char_traits<unsigned short>,class std::allocator<unsigned short> > __cdecl GAME::PlayerManagerClient::GetPlayerLevel(unsigned int)const __ptr64
+inline constexpr const char* PlayerManagerClient_GetPlayerLevel_DLL = "Game.dll";
+inline constexpr const char* PlayerManagerClient_GetPlayerLevel = "?GetPlayerLevel@PlayerManagerClient@GAME@@QEBA?AV?$basic_string@GU?$char_traits@G@std@@V?$allocator@G@2@@std@@I@Z";
+// public: class GAME::WorldVec3 __cdecl GAME::PlayerManagerClient::GetPlayerLocation(unsigned int)const __ptr64
+inline constexpr const char* PlayerManagerClient_GetPlayerLocation_DLL = "Game.dll";
+inline constexpr const char* PlayerManagerClient_GetPlayerLocation = "?GetPlayerLocation@PlayerManagerClient@GAME@@QEBA?AVWorldVec3@2@I@Z";
+// public: unsigned int __cdecl GAME::GameEngine::GetPlayerId(void)const __ptr64
+inline constexpr const char* GameEngine_GetPlayerId_DLL = "Game.dll";
+inline constexpr const char* GameEngine_GetPlayerId = "?GetPlayerId@GameEngine@GAME@@QEBAIXZ";
+// public: bool __cdecl GAME::GameEngine::IsServerOrSingle(void)const __ptr64
+inline constexpr const char* GameEngine_IsServerOrSingle_DLL = "Game.dll";
+inline constexpr const char* GameEngine_IsServerOrSingle = "?IsServerOrSingle@GameEngine@GAME@@QEBA_NXZ";
+// public: class GAME::PartyManager * __ptr64 __cdecl GAME::GameEngine::GetPartyManager(void) __ptr64
+inline constexpr const char* GameEngine_GetPartyManager_DLL = "Game.dll";
+inline constexpr const char* GameEngine_GetPartyManager = "?GetPartyManager@GameEngine@GAME@@QEAAPEAVPartyManager@2@XZ";
+// public: void __cdecl GAME::PartyManager::GetPartyMembers(unsigned int,class mem::vector<unsigned int> & __ptr64)const __ptr64
+inline constexpr const char* PartyManager_GetPartyMembers_DLL = "Game.dll";
+inline constexpr const char* PartyManager_GetPartyMembers = "?GetPartyMembers@PartyManager@GAME@@QEBAXIAEAV?$vector@I@mem@@@Z";
+// public: void __cdecl GAME::PartyManager::AttemptToKickFromLocalParty(unsigned int) __ptr64
+inline constexpr const char* PartyManager_AttemptToKickFromLocalParty_DLL = "Game.dll";
+inline constexpr const char* PartyManager_AttemptToKickFromLocalParty = "?AttemptToKickFromLocalParty@PartyManager@GAME@@QEAAXI@Z";
+// public: int __cdecl GAME::Player::GetPartyId(void)const __ptr64
+inline constexpr const char* Player_GetPartyId_DLL = "Game.dll";
+inline constexpr const char* Player_GetPartyId = "?GetPartyId@Player@GAME@@QEBAHXZ";
+// public: class GAME::GameInfo * __ptr64 __cdecl GAME::Engine::GetGameInfo(void) __ptr64
+inline constexpr const char* Engine_GetGameInfo_DLL = "Engine.dll";
+inline constexpr const char* Engine_GetGameInfo = "?GetGameInfo@Engine@GAME@@QEAAPEAVGameInfo@2@XZ";
+// public: bool __cdecl GAME::GameInfo::GetAutoParty(void)const __ptr64
+inline constexpr const char* GameInfo_GetAutoParty_DLL = "Engine.dll";
+inline constexpr const char* GameInfo_GetAutoParty = "?GetAutoParty@GameInfo@GAME@@QEBA_NXZ";
+// public: class GAME::TradeManager * __ptr64 __cdecl GAME::GameEngine::GetTradeManager(void) __ptr64
+inline constexpr const char* GameEngine_GetTradeManager_DLL = "Game.dll";
+inline constexpr const char* GameEngine_GetTradeManager = "?GetTradeManager@GameEngine@GAME@@QEAAPEAVTradeManager@2@XZ";
+// public: bool __cdecl GAME::TradeManager::AbleToTrade(void)const __ptr64
+inline constexpr const char* TradeManager_AbleToTrade_DLL = "Game.dll";
+inline constexpr const char* TradeManager_AbleToTrade = "?AbleToTrade@TradeManager@GAME@@QEBA_NXZ";
+// public: void __cdecl GAME::TradeManager::HandleInitiateTradeOutbound(unsigned int,bool) __ptr64
+inline constexpr const char* TradeManager_HandleInitiateTradeOutbound_DLL = "Game.dll";
+inline constexpr const char* TradeManager_HandleInitiateTradeOutbound = "?HandleInitiateTradeOutbound@TradeManager@GAME@@QEAAXI_N@Z";
+// public: void __cdecl GAME::GameEngine::InspectPlayer(unsigned int) __ptr64
+inline constexpr const char* GameEngine_InspectPlayer_DLL = "Game.dll";
+inline constexpr const char* GameEngine_InspectPlayer = "?InspectPlayer@GameEngine@GAME@@QEAAXI@Z";
+// public: void __cdecl GAME::GameEngine::InvitePlayerToParty(unsigned int,int) __ptr64
+inline constexpr const char* GameEngine_InvitePlayerToParty_DLL = "Game.dll";
+inline constexpr const char* GameEngine_InvitePlayerToParty = "?InvitePlayerToParty@GameEngine@GAME@@QEAAXIH@Z";
+// public: void __cdecl GAME::GameEngine::AddPlayerToParty(unsigned int,int) __ptr64
+inline constexpr const char* GameEngine_AddPlayerToParty_DLL = "Game.dll";
+inline constexpr const char* GameEngine_AddPlayerToParty = "?AddPlayerToParty@GameEngine@GAME@@QEAAXIH@Z";
+// public: void __cdecl GAME::GameEngine::BanPlayer(unsigned int,bool) __ptr64
+inline constexpr const char* GameEngine_BanPlayer_DLL = "Game.dll";
+inline constexpr const char* GameEngine_BanPlayer = "?BanPlayer@GameEngine@GAME@@QEAAXI_N@Z";
+// public: static class GAME::EventManager * __ptr64 __cdecl GAME::Singleton<class GAME::EventManager>::Get(void)
+inline constexpr const char* EventManager_Get_DLL = "Engine.dll";
+inline constexpr const char* EventManager_Get = "?Get@?$Singleton@VEventManager@GAME@@@GAME@@SAPEAVEventManager@2@XZ";
 // public: virtual void __cdecl GAME::Item::GetUIDisplayText(class GAME::Character const * __ptr64,class mem::vector<struct GAME::GameTextLine> & __ptr64,bool)const __ptr64
 inline constexpr const char* Item_GetUIDisplayText_DLL = "Game.dll";
 inline constexpr const char* Item_GetUIDisplayText = "?GetUIDisplayText@Item@GAME@@UEBAXPEBVCharacter@2@AEAV?$vector@UGameTextLine@GAME@@@mem@@_N@Z";

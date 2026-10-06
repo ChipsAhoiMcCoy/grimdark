@@ -635,11 +635,23 @@ bool attach_component(unsigned component_id, unsigned target_id, int source) {
   log::writef("gameapi: attach component {} -> item {} source {} ok={}", component_id, target_id, source, ok);
   return ok;
 }
+// A bag item to the ground at the character's feet, as the game drops the item on the cursor (exe+0x1ed6b8): the
+// cursor pickup only took it out of the bag grid (no command; the exe's only SendRemoveItemFromInventory callers are
+// destroy, reagents and the market), and the drop is ControllerCharacter::SendDropItemRandom, which creates the world
+// copy at a random spot beside the character and sends the character its RemoveInventoryItemConfigCmd. So: the grid
+// removal, then the drop. Bag items only (an equipped item would need the detach first).
 bool drop_item(unsigned id) {
-  void* c = controller(); load_items();
-  if (!c || !g.SendDropItemRandom || !id) return false;
-  bool ok = guarded("SendDropItemRandom", [&] { g.SendDropItemRandom(c, id); });
+  void* c = controller(); void* ic = inv_ctrl(); load_items();
+  if (!c || !ic || !g.SendDropItemRandom || !g.Inv_RemoveItem || !id) return false;
+  bool in_bag = false;
+  for (const Bag& b : bags()) for (const BagItem& it : b.items) if (it.id == id) in_bag = true;
+  if (!in_bag) { log::writef("gameapi: drop {} refused: not in a bag", id); return false; }
+  bool ok = guarded("drop item", [&] {
+    g.Inv_RemoveItem(ic, id, true);
+    g.SendDropItemRandom(c, id);
+  });
   invalidate_objects();
+  log::writef("gameapi: drop {} ok={}", id, ok);
   return ok;
 }
 // Unequip into the bag, in the exe's order (exe+0x1eb7f1): room check, AddItem to the bag, then the slot's

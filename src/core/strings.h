@@ -236,6 +236,7 @@ inline constexpr std::string_view kInGame = "in game";
 inline constexpr std::string_view kMessage = "message";  // the game's generic message box
 inline constexpr std::string_view kPauseMenu = "pause menu";
 inline constexpr std::string_view kLoading = "loading";
+inline constexpr std::string_view kLeavingGame = "leaving the game";   // a slow teardown on the way to the main menu
 inline constexpr std::string_view kTip = "tip";      // a tutorial tip, shown in our own overlay
 inline constexpr std::string_view kConversation = "conversation";
 inline constexpr std::string_view kClose = "close";
@@ -515,6 +516,33 @@ gd::core::MessageBuilder& push_shortfall(gd::core::MessageBuilder& m, std::strin
 // "<name>, <level name>, 1500 of 5000" -- a faction row
 gd::core::MessageBuilder& push_faction(gd::core::MessageBuilder& m, std::string_view name, std::string_view level_name, float value, int low, int high);
 
-inline constexpr std::string_view kUnsupportedGameVersion = "this game version is not supported by Grimdark; menus will not be read";
+// ---- chat (src/chat.cpp, screens/chat.cpp) ----
+inline constexpr std::string_view kChat = "chat";                  // the chat box opened for typing
+inline constexpr std::string_view kChatWhisper = "whisper";        // the kind word before a whispered line
+inline constexpr std::string_view kChatParty = "party";            // ... before a party-channel line
+inline constexpr std::string_view kNoChat = "no chat messages";
+inline constexpr std::string_view kChatTop = "top";                // Ctrl+Up past the oldest line
+inline constexpr std::string_view kChatBottom = "bottom";          // Ctrl+Down past the newest line
+// "whisper, Bob: hello" -- one chat line: the kind word (none for the all-players channel), the sender with the
+// game's own ": " separator, the text verbatim. A line with no sender (a system line) is the text alone.
+gd::core::MessageBuilder& push_chat_line(gd::core::MessageBuilder& m, std::string_view kind, std::string_view name, std::string_view text);
+// ---- dropping an item (screens/inventory.cpp) ----
+inline constexpr std::string_view kDropped = "dropped";            // "dropped Gladius"
+// ---- other players (screens/players.cpp) ----
+inline constexpr std::string_view kPlayers = "players";
+inline constexpr std::string_view kNoOtherPlayers = "no other players";
+inline constexpr std::string_view kInYourParty = "in your party";
+inline constexpr std::string_view kPartyLeader = "party leader";
+inline constexpr std::string_view kTooFar = "too far away";        // trade / inspect beyond the game's 14 units (its own dialog says why)
+inline constexpr std::string_view kTradeRequested = "trade requested";
+inline constexpr std::string_view kInvited = "invited";
+inline constexpr std::string_view kInviteToParty = "invite to party";   // the group window's invite (no menu tag of its own)
+inline constexpr std::string_view kLeaveParty = "leave party";
+inline constexpr std::string_view kLeftParty = "left the party";
+// "Bob, level 12 Soldier, in your party, 8 away" -- one player row
+gd::core::MessageBuilder& push_player_row(gd::core::MessageBuilder& m, std::string_view name, unsigned level, std::string_view cls,
+                                          bool in_party, bool leader, int distance);
+
+inline constexpr std::string_view kUnsupportedGameVersion ="this game version is not supported by Grimdark; menus will not be read";
 
 }  // namespace gd::strings

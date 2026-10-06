@@ -1210,3 +1210,43 @@ CLAUDE.md "Traps and lessons"; the mechanism docs are `docs/*.md`.
   exe+0xbaf1d <- `Display::Update` <- our DisplayUpdate hook (a plain forward). A second Game.dll access violation
   (Game.dll+0x161b5) followed on another thread. Whether vanilla does this after a refused join (window minimized the
   first time, unfocused both times) is open; no third join was tried. Logs kept as crash_pwjoin.log / crash_pwjoin2.log.
+
+## 2026-10-05 -- chat, the players overlay, Delete drops, leaving the world, the joining state
+- User report + requests: "Return to Main Menu" after hosting showed "this screen is not supported"; chat (read every
+  line, navigate them, open the box); a key to drop items; interact with other players like the party portraits.
+  Run in the dev loop (unfocused, muted; options.txt temporarily windowed 1600x900, restored after; the user's only
+  character Chips, LAN host only -- nothing public, nothing joined).
+- Chat (static RE, then verified live): the chat window `InGameUI+0x4df00` (ctor exe+0x160360, vt exe+0x3152f8) pulls the
+  engine's pending lines every frame with the EXPORT `GameEngine::RemovePendingMessages(vector<ChatMessage>&)`
+  (exe+0x1644cd), open or not; ChatMessage = {u16 name, u16 text, u8 type, Entity*}, stride 0x50 (the push_back at
+  Game.dll+0x2e7200); type 0 all / 1 party / 2 whisper (the colour switch exe+0x16460e, the send paths in exe+0x162b20).
+  Hooked after the original: "Bob: hello" spoken, kept in `core/chat_log.h`. Only inbound network lines take that road
+  (`AddChatMessage`'s one caller is `GameEngineInboundInterface::HandleChatMessage`); the local whisper echo and
+  tagChatError go straight into the window's line list via exe+0x161620 and are not read. `/chat?add=` injects through
+  `AddChatMessage`: "Bob: hello from the test" and "whisper, Ann: psst" arrived and were spoken.
+- The box: Show(true) (exe+0x165260) focuses the edit box (+0xa8; text +0x118); its callback (exe+0x163eb0) submits on
+  Enter (exe+0x162b20) and hides + clears on Escape. Ctrl+Enter (the existing lift of the game's Enter) opened it; the new
+  chat screen said "chat", echoed "hi all", Backspace read "l", Up/Up/Up/Down read the history ("top, ..."), Enter sent
+  "hi al" and the host's own line came back through the hook ("Chips: hi al"). Ctrl+Up / Ctrl+Down in the world verified.
+  Before this the box could open but the in-game screen kept every letter as a mod key: nothing could be typed.
+- Players (static RE): the party portrait's right-click menu builds tagPortraitRemove / tagInspectOption /
+  tagPortraitTrade / tagPortraitChat / tagMPBan (exe+0x253f90) and acts in exe+0x252470 (gates in controls.md); the
+  group window invites with `InvitePlayerToParty(id, you)` (exe+0x2035d8) and leaves with `AddPlayerToParty(you, 0)`. All
+  exports: `gameapi_players.cpp`. Whisper = GameEvent 8 {8, u16 name}, whose listener (exe+0x1612e0, registered at chat
+  +0x1c20) opens the box typed "/Tell Chips " -- verified live with our own id. Nothing else could be run alone; the
+  trade window (+0x29cc8) and the inspect window (+0x52258) are not modelled.
+- Drop (verified live): `SendDropItemRandom` alone never took the item out of the bag grid; the cursor pickup does that
+  (no command -- the exe's only SendRemoveItemFromInventory callers are destroy, reagents and the market) and the
+  drop sends the RemoveInventoryItemConfigCmd itself. `drop_item` = grid removal + SendDropItemRandom. Leather Helm went
+  1.8 u away as a new object (42054), hidden by the loot filter (common), so G skipped it; O + G put it back.
+- Leaving: the unsupported screen now logs `exe_ui::state_summary()` when it becomes current. Exit to Main Menu on the
+  LAN host: "app_state=1 requested=0 world_screen=false ingame_ui=false dialog=false popup=false root:" for ~100 ms, then
+  app_state=2 with the same empty root for ~90 ms, then the main menu. Under the 30-frame debounce here; a slower machine
+  or a hosted session's shutdown passes it. The leaving screen (loading.cpp) covers states 1/2 without a world screen,
+  only after a session was seen; verified: no unsupported on the way out.
+- State 7 (static RE, NOT run): App::ApplyPendingState's table (exe+0xbe760) builds for state 7 a subclass of the
+  multiplayer screen (exe+0x9ab50, vt exe+0x30b8a0) with a connecting layer (vt exe+0x30b9c0); requested by the join
+  (exe+0xe5de3) and the main menu's multiplayer Start (exe+0xda816). Our screen and `popup()` knew only state 6, which
+  explains the earlier friend-join report ("password box ... screen not supported", 2026-10-05 above). Both now take 7.
+- Also: the pause menu is re-announced for a few frames after Yes on "exit to the main menu" (pre-existing, not fixed).
+  `tools/pdata.py` had another machine's path baked in; it now finds the dump relative to itself.

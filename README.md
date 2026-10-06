@@ -188,6 +188,7 @@ move them, bad things happen.  What bad things? It depends; don't go find out.
 | Ctrl+Tab / Ctrl+Shift+Tab | Switch tabs from anywhere in a window. On the tab row itself, Left / Right open the tab you land on |
 | Enter | Activate |
 | Backspace | Secondary action: unequip an item; reclaim a skill point at a spirit guide |
+| Delete | On an item in a bag (inventory window): drop it on the ground at your feet ("dropped Leather Helm"). The whole stack goes. G or M picks it back up; an item your loot filter hides needs O first |
 | \ (backslash) | On an item in a bag, a vendor or the stash: what you have equipped in the slot it would go to -- the slot, the item and its tooltip ("nothing equipped" for an empty slot). The game's side-by-side comparison, spoken. Works on gear whose level or attribute requirements you do not meet yet (the slot is taken from the item's kind) |
 | Space | The game's tooltip for the item; Ctrl+Space the detailed one |
 | Escape | Back / close |
@@ -323,7 +324,24 @@ hotbar manager and works against the locked target like any aimed skill.
 | Ctrl+1..0, Ctrl+J, Ctrl+I | Inside inventory / skills: put the focused skill (or, on a weapon slot, the weapon's basic attack) on quickbar slot 1..10 / the left mouse / the right mouse |
 | Ctrl+O | Loot filter config |
 | Ctrl+P | Pause / unpause (single player only), see Pausing below |
-| Ctrl+K, Ctrl+G, Ctrl+H, Ctrl+V, Ctrl+B, Ctrl+X, Ctrl+Z, Ctrl+], Ctrl+\, Ctrl+Enter | The game's own group, game menu, help, achievements, drop item, item tooltips, show items, toggle UI, party display, chat. We do not yet support these. |
+| Ctrl+K | Other players (multiplayer), see Multiplayer below |
+| Ctrl+Enter | Open the chat box, see Multiplayer below |
+| Ctrl+G, Ctrl+H, Ctrl+V, Ctrl+B, Ctrl+X, Ctrl+Z, Ctrl+], Ctrl+\ | The game's own game menu, help, achievements, drop item, item tooltips, show items, toggle UI, party display. We do not yet support these (to drop an item, use Delete in the inventory). |
+
+### Multiplayer
+
+Chat lines from other players are read as they arrive ("Bob: hello"; "whisper, Ann: ..." and "party, ..." for the
+other channels), and so is your own line once it is sent.
+
+| Key | Description |
+|---|---|
+| Ctrl+Up / Ctrl+Down | Previous / next chat message. Says "top" or "bottom" at either end |
+| Ctrl+Enter | Open the chat box. Type your message (each letter is echoed, Backspace reads back what is left), Enter sends it, Escape closes the box without sending. Up / Down read earlier chat messages while you type. The game's own chat commands work, for example `/w name message` to whisper |
+| Ctrl+K | Other players: everyone in the game with their level, class and whether they are in your party; Space says how far away they are and in which direction. Enter on a player gives what the game offers for them: invite to party, remove from party (when you lead it), inspect, trade, whisper (opens the chat box addressed to them) and ban (when you host). Inspect and trade need you within about 14 units of them. The last row leaves your party when you are in one |
+
+The trade and inspect windows themselves are not read yet: a trade request goes out, but the trade window that opens
+when the other player accepts is not modelled. An invitation or trade request someone sends you arrives as the game's
+message box (yes / no).
 
 ### Pausing
 

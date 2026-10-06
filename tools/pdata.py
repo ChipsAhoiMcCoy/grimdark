@@ -1,6 +1,6 @@
 """Exact function bounds from the exe dump's .pdata (RUNTIME_FUNCTION table). Usage: uv run --with pefile tools/pdata.py <rva-hex>."""
 import struct,sys,os
-ROOT=r"D:\projects\in_progress\grimdark"
+ROOT=os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 img=open(os.path.join(ROOT,"build","GrimDawn.unpacked.bin"),"rb").read()
 e=struct.unpack_from("<I",img,0x3c)[0]; opt=e+0x18
 magic=struct.unpack_from("<H",img,opt)[0]

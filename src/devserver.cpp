@@ -6,6 +6,7 @@
 #include "textcap.h"
 #include "world.h"
 #include "notify.h"
+#include "chat.h"
 #include "quest_rewards.h"
 #include "exe_ui.h"
 #include "audio.h"
@@ -130,6 +131,16 @@ static std::string handle(const std::string& path, const std::map<std::string, s
   if (path == "/combat") {  // /combat?raw=N arms a hex dump of the next N 0x1b events into /log
     if (q.count("raw")) combat::arm_raw_log(parse_int(q.at("raw"), 10));
     return combat::status();
+  }
+  if (path == "/chat") {   // ?add=<text>&name=<sender>&type=0|1|2 injects an inbound line; ?open=1|0 the box; ?review=-1|1
+    if (q.count("add")) chat::dev_add(q.count("name") ? q.at("name") : "Tester", q.at("add"), q.count("type") ? parse_int(q.at("type"), 0) : 0);
+    if (q.count("open")) exe_ui::chat_show(parse_int(q.at("open"), 1) != 0);
+    if (q.count("review")) chat::review(parse_int(q.at("review"), -1));
+    return std::format("open={} input='{}'\n", exe_ui::chat_open(), exe_ui::chat_input()) + chat::status();
+  }
+  if (path == "/players") {   // other players and the actions the game would offer; ?whisper=<id> sends the whisper event
+    if (q.count("whisper")) return gameapi::whisper_player((unsigned)parse_int(q.at("whisper"), 0)) ? "ok\n" : "failed\n";
+    return gameapi::dump_players();
   }
   if (path == "/notify") return notify::status();   // banners + error popups the game showed, and dedupe count
   if (path == "/rewards") return quest_rewards::status();   // the last quest completions and what they handed out (src/quest_rewards.cpp)

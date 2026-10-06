@@ -157,6 +157,7 @@ OptionsScreen options_screen();
 
 // ---- framework B: InGameUI's embedded windows ----
 void* ingame_ui();  // null outside the world
+bool world_screen(); // the exe's world screen exists (main_obj+0x90): gone the moment a session starts tearing down
 struct WindowB {
   void* p = nullptr;
   explicit operator bool() const { return p != nullptr; }
@@ -164,6 +165,10 @@ struct WindowB {
   void show(bool on) const;  // vtable +0xb0
 };
 WindowB ingame_window(unsigned off);   // InGameUI + off (kWin* below)
+// ---- the chat window (InGameUI+0x4df00): open = its input box is up and has the game's keyboard focus ----
+bool chat_open();
+std::string chat_input();     // what has been typed so far (colour codes stripped)
+bool chat_show(bool on);      // the window's own Show: true opens the box with the edit focused, false closes it
 // ---- the loot filter window (docs/re_lootfilter_exe.md): its check boxes are heap objects in a
 // std::map<CheckBox*, LootFilterOption> at window+0xd58; a box's checked byte is the TextButton pressed byte ----
 struct LootFilterBox { void* ctrl = nullptr; int option = -1; bool checked = false; };
@@ -264,7 +269,8 @@ constexpr unsigned kPromptBox = 0x7378, kCharacter = 0x52258 /*the multiplayer I
                    kFactions = 0x6c9b8, kAchievements = 0x7d150, kDevotion = 0x813a0, kStack = 0x83ed8,
                    kPotions = 0x8a300, kQuestReward = 0x8efd8, kObjective = 0x90390, kLootFilter = 0xab410,
                    kTrade = 0x29cc8, kMarket = 0x2b538, kEnchanter = 0x30dd8, kTransmuter = 0x85378, kAltar = 0x87628,
-                   kFactionVendor = 0x2e188, kCaravan = 0x4fd08, kShrine = 0x7da50 /*ruined: offerings*/, kShrineCorrupted = 0x7f6f8 /*desecrated: summon monsters; its own window class (vt exe+0x318128), same widget offsets*/, kCrafting = 0x3aa80, kAscension = 0x8baa8;
+                   kFactionVendor = 0x2e188, kCaravan = 0x4fd08, kShrine = 0x7da50 /*ruined: offerings*/, kShrineCorrupted = 0x7f6f8 /*desecrated: summon monsters; its own window class (vt exe+0x318128), same widget offsets*/, kCrafting = 0x3aa80, kAscension = 0x8baa8,
+                   kChat = 0x4df00;
 constexpr unsigned kHost = 0x7338;  // the widget host whose vtable +0x80 presses a child button
 // The pause menu's Options: InGameUI+0x4def8 holds a POINTER to a 0x98-byte host window (ctor exe+0x29efc0,
 // vtable exe+0x31dd90; visible byte +0x68) whose +0x90 is the framework-A Options screen itself (allocated
@@ -431,6 +437,7 @@ DialogAnswer last_dialog_answer();
 
 // ---- dev dumps (game thread) ----
 std::string ui_dump();           // app state, main menu slots, the whole framework A tree
+std::string state_summary();     // one log line: app state (current, requested), world/InGameUI present, dialog, popup, root children
 std::string ingame_dump();       // every known InGameUI window with IsVisible(), the prompt state
 std::string dialog_dump();
 bool activate_ptr(uintptr_t p);  // /ui/activate?ptr= -- pointer must be a node in the current tree

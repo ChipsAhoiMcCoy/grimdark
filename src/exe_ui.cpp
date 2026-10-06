@@ -27,6 +27,12 @@ constexpr uintptr_t kComboA = 0x30c278;         // drop-down (commit exe+0xab951
 constexpr uintptr_t kListA = 0x30c530;          // key-binding table (ctor exe+0xaf8f0, rows exe+0xafe20)
 constexpr uintptr_t kRowListA = 0x30c6a0;       // the multiplayer screen's selectable row lists (HandleMouseEvent exe+0xb5090; same rows layout as kListA)
 constexpr uintptr_t kMultiplayerScreenVt = 0x30d308;  // app state 6 (measured live 2026-10-04)
+// App state 7 = joining a game (static RE 2026-10-05): exe+0xe5de3 (the join, after the server address is copied to
+// main_obj+0xc68) and the main menu's multiplayer Start (exe+0xda816) request it; ApplyPendingState (exe+0xbe656)
+// builds a SUBCLASS of the multiplayer screen (ctor exe+0x9ab50 = the base ctor exe+0xe0170, then this vtable) with a
+// connecting layer (ctor exe+0x9b7c0, vtable below) holding the ordinary popup window. Same members as state 6.
+constexpr uintptr_t kJoiningScreenVt = 0x30b8a0;
+constexpr uintptr_t kConnectingLayerVt = 0x30b9c0;
 constexpr uintptr_t kProgressLayerVt = 0x30baa8;      // the multiplayer screen's modal layer ("Building server list" + Cancel): a child of that screen, not of the root
 constexpr uintptr_t kPasswordLayerVt = 0x30bb98;      // the join password prompt's layer (Ok, text, Cancel, edit, "Password"; measured live 2026-10-05)
 constexpr uintptr_t kOptionsScreenVt = 0x30cad0, kOptionsPanelVt = 0x30d650, kOptionsPageVt = 0x30cbb8;  // measured live 2026-08-22
@@ -46,6 +52,7 @@ constexpr size_t kMainObj_UiRoot = 0x88;        // MenuManager (DisplayWidget) -
 constexpr size_t kMainObj_WorldScreen = 0x90;   // the world screen object -- exe+0x1099f0
 constexpr size_t kMainObj_App = 0x250;          // the exe's Display subclass -- main loop exe+0xeeb8
 constexpr size_t kApp_State = 0x260;            // current app state -- exe+0xbe3d0
+constexpr size_t kApp_Requested = 0x258;        // the state App::RequestState asked for, applied (and zeroed) by exe+0xbe320
 constexpr size_t kApp_MainMenu = 0x298;         // main-menu manager -- exe+0xbe4b5
 constexpr size_t kWorldScreen_InGameUI = 0x2f0; // exe+0x200dc
 constexpr size_t kMI_Node = 8;                  // DisplayWidget at 0, tree node at +8 (thunks at exe+0xc324c)
@@ -307,7 +314,7 @@ WidgetA popup_window_in(WidgetA layer) {
 }
 bool is_popup_layer(WidgetA layer) {
   uintptr_t v = layer.vtable_rva();
-  return v == rva::kPopupLayerVt || v == rva::kProgressLayerVt || v == rva::kPasswordLayerVt;
+  return v == rva::kPopupLayerVt || v == rva::kProgressLayerVt || v == rva::kPasswordLayerVt || v == rva::kConnectingLayerVt;
 }
 }  // namespace
 Popup popup() {
@@ -317,7 +324,7 @@ Popup popup() {
     // The multiplayer screen keeps its own modal layers among its children (measured live 2026-10-04/05): the progress
     // layer ("Building server list" + Cancel), ordinary popup layers (a join refused: "incompatible game mode" + Ok) and
     // the password prompt.
-    if (c.vtable_rva() == rva::kMultiplayerScreenVt)
+    if (c.vtable_rva() == rva::kMultiplayerScreenVt || c.vtable_rva() == rva::kJoiningScreenVt)
       for (WidgetA layer : c.children())
         if (is_popup_layer(layer) && layer.active())
           if (WidgetA w = popup_window_in(layer)) return {w};
@@ -351,6 +358,14 @@ std::string Popup::text() const {
 }
 
 int app_state() { return rd_or<int>(app(), off::kApp_State, 0); }
+// One line for the log when no screen is modelled: enough to tell a transition gap from a screen we lack.
+std::string state_summary() {
+  std::string out = std::format("app_state={} requested={} world_screen={} ingame_ui={} dialog={} popup={} root:",
+                                app_state(), rd_or<int>(app(), off::kApp_Requested, 0), rdp(main_obj(), off::kMainObj_WorldScreen) != nullptr,
+                                ingame_ui() != nullptr, dialog_open(), (bool)popup());
+  for (WidgetA c : root().children()) out += std::format(" {:#x}{}", c.vtable_rva(), c.active() ? "" : "(off)");
+  return out;
+}
 WidgetA root() { void* mm = rdp(main_obj(), off::kMainObj_UiRoot); return mm ? WidgetA{(char*)mm + off::kMI_Node} : WidgetA{}; }
 MainMenu main_menu() { return {menu_manager_obj()}; }
 WidgetA MainMenu::button(unsigned slot_off) const { return {rdp(p, slot_off)}; }
@@ -411,8 +426,10 @@ bool window_hidden_flag(void* window, unsigned flag_off) { return rd_or<uint8_t>
 
 // ---- the multiplayer screen (docs/exe-ui-layout.md "Multiplayer") ----
 MultiplayerScreen multiplayer_screen() {
-  if (app_state() != 6) return {};
-  for (WidgetA c : root().children()) if (c.vtable_rva() == rva::kMultiplayerScreenVt && c.active()) return {c};
+  int state = app_state();
+  if (state != 6 && state != 7) return {};   // 7 = the joining subclass, same members
+  uintptr_t want = state == 6 ? rva::kMultiplayerScreenVt : rva::kJoiningScreenVt;
+  for (WidgetA c : root().children()) if (c.vtable_rva() == want && c.active()) return {c};
   return {};
 }
 WidgetA MultiplayerScreen::member(unsigned off) const { return screen ? WidgetA{rdp(screen.p, off)} : WidgetA{}; }
@@ -423,6 +440,7 @@ bool MultiplayerScreen::select_character(int index) const { return picker_select
 
 // ---- framework B ----
 void* ingame_ui() { return rdp(rdp(main_obj(), off::kMainObj_WorldScreen), off::kWorldScreen_InGameUI); }
+bool world_screen() { return rdp(main_obj(), off::kMainObj_WorldScreen) != nullptr; }
 bool WindowB::visible() const { bool v = false; return p && call_bool(p, off::kVt_IsVisible, v) && v; }
 
 // ---- the riftgate travel map (static RE 2026-08-22, docs/exe-ui-layout.md "Riftgate travel") ----
@@ -634,6 +652,24 @@ std::string map_nuggets_dump(int maxn) {
 }
 void WindowB::show(bool on) const { if (p) call_void_bool(p, off::kVt_Show, on); }
 WindowB ingame_window(unsigned o) { void* ui = ingame_ui(); return ui ? WindowB{(char*)ui + o} : WindowB{}; }
+
+// ---- the chat window (static RE 2026-10-05; docs/exe-ui-layout.md "Chat"): InGameUI+0x4df00, ctor exe+0x160360,
+// vtable exe+0x3152f8. Show(true) (exe+0x165260) registers its edit box (+0xa8) with the world UI's keyboard focus
+// list and focuses it; the box's callback (sub-object +0x98, exe+0x163eb0) submits on Enter (exe+0x162b20) and on
+// Escape hides the window and clears the text. So "open" = the visible byte, and the typed text is the box's
+// string at +0x118 (= box + 0x70). ----
+namespace {
+constexpr uintptr_t kChat_Vtable = 0x3152f8;
+constexpr size_t kChat_Visible = 0x68, kChat_Input = 0x118;
+void* chat_window() {
+  void* ui = ingame_ui();
+  void* w = ui ? (char*)ui + ingame::kChat : nullptr;
+  return w && vtable_rva_of(w) == kChat_Vtable ? w : nullptr;
+}
+}  // namespace
+bool chat_open() { void* w = chat_window(); return w && rd_or<uint8_t>(w, kChat_Visible, 0) != 0; }
+std::string chat_input() { void* w = chat_window(); return w ? read_u16(w, kChat_Input) : std::string(); }
+bool chat_show(bool on) { void* w = chat_window(); if (!w) return false; WindowB{w}.show(on); return true; }
 
 // ---- loot filter window (static RE 2026-08-29, docs/re_lootfilter_exe.md; map + bytes verified live) ----
 namespace {

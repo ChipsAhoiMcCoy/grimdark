@@ -17,8 +17,9 @@ Roots and screen state:
   subclass = the UI root `DisplayWidget` (vtable exe+0x30c958; mouse handler exe+0xbef10). The tree root
   node is `app+8` (node vtable exe+0x30c888; thunks at exe+0xc324c prove the +8). NOT `[main_obj+0x250]`
   (measured: garbage).
-- `app+0x260` current app state (exe+0xbe3d0): 3/4/8 main menu, 5 options, 6 multiplayer, 7 and 9 unnamed,
-  10 entering the world, 1 in the world. `app+0x258` requested state; `App::RequestState` = exe+0xbb2c0.
+- `app+0x260` current app state (exe+0xbe3d0): 3/4/8 main menu, 5 options, 6 multiplayer, 7 joining (the multiplayer
+  screen's subclass, exe+0x9ab50), 9 the credits after finishing the game (exe+0x10983), 10 entering the world, 1 in the
+  world, then 1 and 2 with no world screen while it is torn down. ApplyPendingState's table at exe+0xbe760 (states 3..10). `app+0x258` requested state; `App::RequestState` = exe+0xbb2c0.
 - The main-menu manager (ctor exe+0xd4fc0, vtable exe+0x30cca0) is the child of the root with that vtable
   (its primary vtable IS the node vtable, the node pointer is the object). `app+0x298` points to it and
   `manager+0x118` back to `app`. Rebuilt whenever state 3/4/8 is re-entered (pointers do not survive a game
@@ -155,7 +156,9 @@ available response, or one "End conversation" row. The click handler runs the st
 (window rect + row rect) so the game's path, actions included, runs. Escape goes through the game's key.
 
 ## Screen identity summary (what `is_active` reads)
-main menu: app state 3/4/8 + no sub-window + no popup. Create/Delete Character, Difficulty: the manager's
+main menu: app state 3/4/8 + no sub-window + no popup. Leaving the world: app state 1 or 2 with no world screen
+(`[main_obj+0x90]` null), after a session was seen. Joining: app state 7, the multiplayer screen's subclass (vtable
+exe+0x30b8a0) with its connecting layer (exe+0x30b9c0). Create/Delete Character, Difficulty: the manager's
 sub-window slot (+ hidden byte). Options: app state 5 + the screen in the tree. Multiplayer: app state 6 + the
 screen (exe+0x30d308) in the tree + no popup (its own modal layer included). Message box: DialogManager
 (world) or the popup layer (menus). Loading: app state 10. In game: InGameUI present. Pause: exit window
@@ -260,3 +263,22 @@ framework-A widgets held at fixed screen members (pointers read live, cross-chec
   boxes) and TEXT "Password" (67,72) -- the label comes AFTER the box, so `Popup::edit_label()` matches by row.
   Ok joins with the box's text: an empty or wrong password -> loading "Connecting to Server..." -> "Network problems
   detected." -> back to this screen.
+
+## Chat (static RE 2026-10-05, verified live the same day; docs/devlog.md 2026-10-05)
+- The chat window is a by-value InGameUI member at `+0x4df00` (ctor exe+0x160360, vtable exe+0x3152f8, size ~0x1c78):
+  `+0x68` visible = the input box is open (IsVisible exe+0x10d5f0 returns it), `+0xa8` its edit box (sub-object; text
+  u16 at `+0x118` = box + 0x70), `+0xd60/+0xd68` the displayed lines (stride 0x40, fade timer +0x28), `+0x1bc0` the last
+  whisper sender (the /r target), `+0x1c20` an EventManager listener for event `+0x1c28` = 8, `+0x1c38` the whisper target
+  being typed to, `+0x1c58` the ignore list (u16 strings), `+0x1c70` the channel (0 party, else everyone).
+- Vtable: `+0x38` HandleMouseEvent exe+0x164100, `+0x48` Update exe+0x1643f0 (takes the engine's lines with the export
+  `GameEngine::RemovePendingMessages` every frame, formats "name" + ": " + "text" (exe+0x2f362c), adds them through
+  exe+0x161620, which refuses ignored names, and raises a speech bubble over the sender), `+0x58` HandleKeyEvent =
+  the shared `return false` stub (keys reach the edit box through the world UI's focus list instead), `+0xb0` Show
+  exe+0x165260 (true: register the box with `[[this+0x30]+0xb60]` and focus it unless the input mode is a gamepad's).
+- The box's callback (sub-object `+0x98`, vtable exe+0x3152d8, slot 0 exe+0x163eb0): event 0 = Enter -> submit
+  exe+0x162b20 (chat commands via exe+0x163490; whisper / party / everyone through `GameEngine::SendChatMessage` with
+  type 2 / 1 / 0; the whisper is echoed locally through exe+0x161620, an unknown name is tagChatError); event 1 = Escape
+  -> Show(false) and the text cleared.
+- Event 8 (the party portrait's Whisper, exe+0x25276a): GameEvent {int 8; u16string name} through `EventManager::Send(ev,
+  8)`; the listener exe+0x1612e0 shows the window and types "/<whisper command> <name> " (tagChatCommand*) into the box.
+- The key action 5 (Chat, Enter) presses the HUD button `+0xaab8`; the button's pressed byte `+0xad3a` follows the window.

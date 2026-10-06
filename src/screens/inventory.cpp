@@ -61,6 +61,20 @@ class InventoryScreen : public WindowScreen, public AssignSource {
     invalidate();
   }
   void on_focus() override { invalidate(); WindowScreen::on_focus(); }
+  // Delete on a bag item: drop it on the ground at your feet (the game's own drop; G or M picks it back up). The
+  // whole stack goes, as when the game drops the cursor's item. Equipment rows refuse: unequip first.
+  void drop_focused() {
+    GraphNavigator* nav = app::navigator();
+    std::optional<ControlId> fid = nav ? nav->focused_id() : std::nullopt;
+    if (!fid || !fid->structural_key().is_string() || fid->structural_key().text().rfind("inventory.item", 0) != 0) { speech::speak(strings::kCannot, true); return; }
+    unsigned id = (unsigned)std::strtoul(fid->structural_key().text().c_str() + 14, nullptr, 10);
+    std::string label = item_label(id);
+    for (const gameapi::Bag& bag : gameapi::bags()) for (const gameapi::BagItem& it : bag.items) if (it.id == id) label = item_label(it);   // with its stack
+    bool ok = gameapi::drop_item(id);
+    MessageBuilder m; m.fragment(ok ? strings::kDropped : strings::kCannot).fragment(ok ? label : std::string());
+    speech::speak(m.build(), true);
+    invalidate();
+  }
 
   void build(GraphBuilder& b) override {
     const std::vector<gameapi::Bag>& bags = bags_.get([] { return gameapi::bags(); }, 30);
@@ -201,6 +215,10 @@ class InventoryScreen : public WindowScreen, public AssignSource {
 void set_receiving_bag_focused() {
   InventoryScreen* s = dynamic_cast<InventoryScreen*>(app::screens().current());
   if (s) s->set_receiving_bag();   // a Windows-category chord (Ctrl+Enter): silent in the other windows
+}
+void drop_focused_item() {
+  InventoryScreen* s = dynamic_cast<InventoryScreen*>(app::screens().current());
+  if (s) s->drop_focused();   // a Windows-category key (Delete): silent in the other windows
 }
 std::unique_ptr<Screen> make_inventory() { return std::make_unique<InventoryScreen>(); }
 }  // namespace gd::screens

@@ -113,7 +113,7 @@ std::vector<std::string> item_tooltip(const void* item, bool simple, bool detail
 bool item_requirements_met(const void* item);
 // Actions (each is the game's own call; the screens re-snapshot afterwards).
 bool use_item(unsigned id, int source);          // PlayerInventoryCtrl::UseItem (the bag's right-click: equip / drink / read)
-bool drop_item(unsigned id);                     // ControllerCharacter::SendDropItemRandom
+bool drop_item(unsigned id);                     // a bag item to the ground: grid removal + ControllerCharacter::SendDropItemRandom
 bool unequip(int loc);                           // EquipmentCtrl::RemoveItem on the slot's item
 bool equip(unsigned id, int loc);                // EquipmentCtrl::PlaceItem(loc, id, ...)
 bool pickup_item(unsigned id);                   // ControllerCharacter::PickupItem (the game's pickup command; no range check)
@@ -306,6 +306,32 @@ bool pet_attack(unsigned pet_id, unsigned target_id);
 bool pet_move(unsigned pet_id, const world::Vec3& world_pos);
 bool release_pet(unsigned pet_id);               // Disband Pet
 std::string dump_pets();
+
+// ---- Other players (gameapi_players.cpp): the party portrait menu and the group window's actions, exports only ----
+struct OtherPlayer {
+  unsigned id = 0;            // the player's object id (what every action takes)
+  std::string name;
+  unsigned level = 0;
+  std::string class_tag, class_name;   // the mastery combination's tag and its localized name
+  bool in_party = false;      // in YOUR party
+  bool leader = false;        // leads your party
+  int distance = -1;          // world units from you, -1 when unknown (another area)
+  bool has_pos = false;
+  world::Vec3 pos;            // world space, when has_pos
+};
+struct PlayerActions { bool inspect = false, trade = false, whisper = false, invite = false, remove = false, ban = false, leave = false; };
+enum class PlayerResult { Done, TooFar, Refused, Failed };
+bool is_multiplayer();                          // a network client, or a host with someone else in the game
+std::vector<OtherPlayer> other_players();       // everyone in the game but you, the game's order
+PlayerActions player_actions(unsigned id);      // which of the menu's actions the game would offer for this player
+PlayerResult inspect_player(unsigned id);       // within 14 units
+PlayerResult trade_with(unsigned id);           // TradeManager::AbleToTrade, within 14 units: sends the trade request
+bool invite_player(unsigned id);
+bool kick_player(unsigned id);                  // party leader, not auto-party
+bool ban_player(unsigned id);                   // host only
+bool leave_party();
+bool whisper_player(unsigned id);               // opens the chat box with "/w <name> " typed (the game's own event)
+std::string dump_players();                     // dev: /players
 
 // ---- Loot filter (gameapi_loot.cpp; docs/loot-filter.md) ----
 constexpr int kLootFilterOptions = 42, kLootFilterColumns = 4;

@@ -172,7 +172,8 @@ developer's screen reader. Client: `uv run tools/gd.py <cmd>` (add `--with pillo
   T / Ctrl+T settings overlays, the F1 mod menu. Shipping: `gdlaunch.exe`, the Rust installer, CI releases with a
   rolling `ci-latest`, the version gate.
 - Not modelled: key rebinding, the Network screen and the in-world multiplayer windows (party, trade, inspect; the
-  Multiplayer screen itself is `screens/multiplayer.cpp`), the Illusionist (transmute), the inventor's Convert /
+  Multiplayer screen itself is `screens/multiplayer.cpp`, chat is `src/chat.cpp` + `screens/chat_box.cpp`, the portrait
+  menu's actions are the Ctrl+K players overlay `screens/players.cpp`), the Illusionist (transmute), the inventor's Convert /
   Reroll tabs, a remote stash, attribute reclaim, aiming at open ground for point-target skills (runtime target type 4).
 - Open threads: sonar tuning by ear (the stagger rework is kept, the crowd compression was rejected by testers), the
   telegraph ramp-to-hit, real-key Ctrl-chord dispatch (synthetic keys cannot verify it), rooms authoring for the
