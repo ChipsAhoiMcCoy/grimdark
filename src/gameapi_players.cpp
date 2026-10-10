@@ -1,9 +1,9 @@
 // Other players in a multiplayer game, through Game.dll / Engine.dll exports only (static RE 2026-10-05).
-// The actions are the party portrait's right-click menu (its handler exe+0x252470, built at exe+0x253f90) and the
-// group window's invite / leave (exe+0x2035d8, exe+0x2036c0), each behind the same gate the exe applies:
+// The actions are the party portrait's right-click menu (its handler exe+0x252600, built at exe+0x254120) and the
+// group window's invite / leave (exe+0x203748, exe+0x203830), each behind the same gate the exe applies:
 //   Remove  (tagPortraitRemove): not auto-party and you lead your party (Player::GetPartyId == your player id)
 //                                -> PartyManager::AttemptToKickFromLocalParty(id)
-//   Inspect (tagInspectOption):  within 14 units (exe+0x31ea98) -> GameEngine::InspectPlayer(id), else the game's
+//   Inspect (tagInspectOption):  within 14 units (exe+0x31eab0) -> GameEngine::InspectPlayer(id), else the game's
 //                                tagInspectWarning box
 //   Trade   (tagPortraitTrade):  TradeManager::AbleToTrade, within 14 units -> HandleInitiateTradeOutbound(id, true),
 //                                else the game's tagTradeDistance box
@@ -77,7 +77,7 @@ void load_players() {
   GAPI_LOAD(g, EventManager_Get, EventManager_Get);
   GAPI_LOAD(g, EventManager_Send, EventManager_Send);
 }
-constexpr float kReach = 14.0f;   // trade / inspect distance (exe+0x31ea98, compared in both branches of exe+0x252470)
+constexpr float kReach = 14.0f;   // trade / inspect distance (exe+0x31eab0, compared in both branches of exe+0x252600)
 
 void* pmc() {
   load_players();
@@ -228,7 +228,7 @@ bool ban_player(unsigned id) {
   log::writef("gameapi: ban player {} ok={}", id, ok);
   return ok;
 }
-// The portrait menu's Whisper (tagPortraitChat, exe+0x25276a): the player's name, quoted when it holds a space, in
+// The portrait menu's Whisper (tagPortraitChat, exe+0x2528fa): the player's name, quoted when it holds a space, in
 // GameEvent 8 {int type = 8; u16string name}; the chat window's listener opens its box with "/w <name> " typed.
 namespace {
 struct WhisperEvent { int type; int pad; MsvcStringW name; };

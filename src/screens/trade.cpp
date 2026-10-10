@@ -45,7 +45,7 @@ class TradeScreen : public WindowScreen {
     remember(v);
     WindowScreen::on_focus();
   }
-  // Escape = the game's Cancel (closing the window cancels the trade anyway, exe+0x260b30).
+  // Escape = the game's Cancel (closing the window cancels the trade anyway, exe+0x260cc0).
   std::vector<ScreenAction> actions() override { return {{std::string(action_ids::Back), [] { exe_ui::trade_press(false); }}}; }
 
   // The other player's changes, spoken as they happen (the game shows them only in its grid).

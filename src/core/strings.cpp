@@ -203,7 +203,7 @@ MessageBuilder& push_faction(MessageBuilder& m, std::string_view name, std::stri
 MessageBuilder& push_chat_line(MessageBuilder& m, std::string_view kind, std::string_view name, std::string_view text) {
   if (!kind.empty()) m.list_item().fragment(kind);
   m.list_item();
-  if (!name.empty()) m.fragment(std::string(name) + ":");   // the game's own "name: text" separator (exe+0x2f362c)
+  if (!name.empty()) m.fragment(std::string(name) + ":");   // the game's own "name: text" separator (exe+0x2f366c)
   return m.fragment(text);
 }
 MessageBuilder& push_player_row(MessageBuilder& m, std::string_view name, unsigned level, std::string_view cls, bool in_party, bool leader, int distance) {

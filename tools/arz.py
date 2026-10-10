@@ -10,7 +10,8 @@ tools/gdmap/gamefiles.py) and a later record overrides an earlier one by path, l
 one file's path to read that file alone."""
 import os, re, struct, sys, lz4.block
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-DEFAULT = r"C:\Program Files (x86)\Steam\steamapps\common\Grim Dawn\database\database.arz"
+from gamepath import GAME_DIR
+DEFAULT = os.path.join(GAME_DIR, "database", "database.arz")
 P = DEFAULT
 
 

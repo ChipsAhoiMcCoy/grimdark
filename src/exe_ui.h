@@ -54,16 +54,16 @@ struct WidgetA {
   std::vector<WidgetA> texts() const;
   std::vector<WidgetA> edits() const;
   // ---- the options screen's value controls (docs/exe-ui-layout.md, "Options") ----
-  bool is_slider() const;          // exe+0x30d4c0: float value +0x324 in [min +0x320, max +0x31c]
+  bool is_slider() const;          // exe+0x30d508: float value +0x324 in [min +0x320, max +0x31c]
   float slider_value() const;      // normalised to 0..1 (the options sliders are 0..1 already)
   bool set_slider(float v01) const;  // writes the value and fires the slider's listeners (what a drag does)
-  bool is_combo() const;           // exe+0x30c278: items vector +0xd0 (0x30 stride, u16 text first), selected +0xec
+  bool is_combo() const;           // exe+0x30c2b0: items vector +0xd0 (0x30 stride, u16 text first), selected +0xec
   std::vector<std::string> combo_items() const;
   int combo_index() const;
   bool set_combo(int index) const;   // writes the index and fires the listeners (what choosing a row does)
-  bool is_list() const;            // exe+0x30c530: the key-binding table, rows of u16 cells (action, key, key)
+  bool is_list() const;            // exe+0x30c568: the key-binding table, rows of u16 cells (action, key, key)
   std::vector<std::vector<std::string>> list_rows() const;   // the same rows layout serves is_row_list()
-  // exe+0x30c6a0: a selectable row list (the multiplayer screen's friends and servers). The selection is the row
+  // exe+0x30c6d8: a selectable row list (the multiplayer screen's friends and servers). The selection is the row
   // index a single click stores; writing it is that click minus the sound (no listener acts on a single click).
   bool is_row_list() const;
   int list_selected() const;       // -1 = none / not a row list
@@ -119,7 +119,7 @@ MainMenu main_menu();
 WidgetA window_node(void* window);
 bool window_hidden_flag(void* window, unsigned flag_off);  // CreateCharacter +0x288, Difficulty +0x350
 
-// The multiplayer screen (app state 6, vtable exe+0x30d308; docs/exe-ui-layout.md "Multiplayer", measured live
+// The multiplayer screen (app state 6, vtable exe+0x30d350; docs/exe-ui-layout.md "Multiplayer", measured live
 // 2026-10-04): Join / Host mode tabs, Internet / LAN, the Steam friends list, the filter bar, the server list, the host
 // settings, the character picker and the bottom bar, every one a framework-A widget held at a fixed screen member.
 // Start is mode-dependent: Join joins the selected server (exe+0xe6ed0: the game's own level / mode / full / hardcore
@@ -171,7 +171,7 @@ bool trade_press(bool accept);            // the window's Accept (refused while 
 std::string trade_button_caption(bool accept);
 bool trade_gold_invalid();                // the window's "gold over your money" byte: Accept is refused while it is set
 bool trade_set_gold(unsigned amount);     // the gold box's text; the window offers it on its next Update (clamped by the game)
-bool trade_quick_add(unsigned item_id);   // the bag's shift-click while trading (exe+0x260d50): the game's gate + HandleAddItemOutbound
+bool trade_quick_add(unsigned item_id);   // the bag's shift-click while trading (exe+0x260ee0): the game's gate + HandleAddItemOutbound
 // ---- the chat window (InGameUI+0x4df00): open = its input box is up and has the game's keyboard focus ----
 bool chat_open();
 std::string chat_input();     // what has been typed so far (colour codes stripped)
@@ -182,7 +182,7 @@ struct LootFilterBox { void* ctrl = nullptr; int option = -1; bool checked = fal
 std::vector<LootFilterBox> loot_filter_boxes();      // empty outside the world
 bool loot_filter_mirror(int option, bool on);         // write the drawn box's state after Player::SetLootFilter (the game only refreshes on Show)
 // The actor capture's "show every item label" modifier byte (what holding Alt sets, key action 0x23; read by the
-// exe's ItemIgnore helper exe+0x20f70): written every frame while the mod's O latch is on.
+// exe's ItemIgnore helper exe+0x20f60): written every frame while the mod's O latch is on.
 bool set_show_all_items(bool on);
 // ---- the crafting (blacksmith) window (docs/re_crafting_exe.md): a frame around a by-value crafting panel whose
 // list box holds the recipe rows in the game's own order and grouping ----
@@ -255,15 +255,15 @@ struct Riftgate {
   int uid[4] = {};       // UniqueId (the discovered-set key)
   bool current = false;  // the gate the player is standing at
 };
-bool riftgate_map_open();                  // MiniMap visible + shown + mode byte 0 (the exe's own predicate, exe+0x21be20)
+bool riftgate_map_open();                  // MiniMap visible + shown + mode byte 0 (the exe's own predicate, exe+0x21bfb0)
 std::vector<Riftgate> riftgates();         // the discovered gates the map draws, in its section order
-bool riftgate_travel(const Riftgate& g);   // what the click does: SetLastUsedTeleportId + the map's travel call (exe+0x291520)
+bool riftgate_travel(const Riftgate& g);   // what the click does: SetLastUsedTeleportId + the map's travel call (exe+0x2916c0)
 void riftgate_map_close();                 // the close button: MiniMap Show(false)
 std::string map_nuggets_dump(int maxn);    // dev: the aerial map's cached MinimapGameNugget vector
 bool aerial_nugget_span(void*& begin, size_t& count);   // the live nugget vector (0xA0 stride); false when the map has not populated it
 bool aerial_map_open();                    // the local aerial map (M / Ctrl+M): MiniMap shown, mode 1
 // The aerial map's zoom: the map is an orthographic camera whose view height is zoom * 3 world units; the wheel
-// clamps it to kAerialZoomMin..kAerialZoomMax (exe+0x174c42/+0x174c5d) and saves it as options.txt mapZoom.
+// clamps it to kAerialZoomMin..kAerialZoomMax (exe+0x174db2/+0x174c5d) and saves it as options.txt mapZoom.
 // The icon list is gathered from that camera's frustum, so the zoom IS the reach of the map. Fields at
 // MiniMap+0x166c (current) / +0x1670 (target), verified live 2026-09-11 (docs/map-icons.md).
 inline constexpr float kAerialZoomMin = 40.0f, kAerialZoomMax = 135.0f;
@@ -276,12 +276,12 @@ constexpr unsigned kPromptBox = 0x7378, kCharacter = 0x52258 /*the multiplayer I
                    kFactions = 0x6c9b8, kAchievements = 0x7d150, kDevotion = 0x813a0, kStack = 0x83ed8,
                    kPotions = 0x8a300, kQuestReward = 0x8efd8, kObjective = 0x90390, kLootFilter = 0xab410,
                    kTrade = 0x29cc8, kMarket = 0x2b538, kEnchanter = 0x30dd8, kTransmuter = 0x85378, kAltar = 0x87628,
-                   kFactionVendor = 0x2e188, kCaravan = 0x4fd08, kShrine = 0x7da50 /*ruined: offerings*/, kShrineCorrupted = 0x7f6f8 /*desecrated: summon monsters; its own window class (vt exe+0x318128), same widget offsets*/, kCrafting = 0x3aa80, kAscension = 0x8baa8,
+                   kFactionVendor = 0x2e188, kCaravan = 0x4fd08, kShrine = 0x7da50 /*ruined: offerings*/, kShrineCorrupted = 0x7f6f8 /*desecrated: summon monsters; its own window class (vt exe+0x318170), same widget offsets*/, kCrafting = 0x3aa80, kAscension = 0x8baa8,
                    kChat = 0x4df00;
 constexpr unsigned kHost = 0x7338;  // the widget host whose vtable +0x80 presses a child button
-// The pause menu's Options: InGameUI+0x4def8 holds a POINTER to a 0x98-byte host window (ctor exe+0x29efc0,
-// vtable exe+0x31dd90; visible byte +0x68) whose +0x90 is the framework-A Options screen itself (allocated
-// 0x508 and built by the same ctor exe+0xc8e60 as the main menu's, in exe+0x29f2d0). The app state stays 10.
+// The pause menu's Options: InGameUI+0x4def8 holds a POINTER to a 0x98-byte host window (ctor exe+0x29f160,
+// vtable exe+0x31ddb8; visible byte +0x68) whose +0x90 is the framework-A Options screen itself (allocated
+// 0x508 and built by the same ctor exe+0xc8e60 as the main menu's, in exe+0x29f470). The app state stays 10.
 constexpr unsigned kOptionsHostPtr = 0x4def8, kOptionsHost_Visible = 0x68, kOptionsHost_Screen = 0x90;
 }
 struct WidgetB {
@@ -289,7 +289,7 @@ struct WidgetB {
   explicit operator bool() const { return p != nullptr; }
   uintptr_t vtable_rva() const;
   bool is_button() const;         // the plain bitmap button (no caption of its own)
-  bool is_text_button() const;    // TextButton: localized caption at +0x358 (ctor exe+0x126fe0)
+  bool is_text_button() const;    // TextButton: localized caption at +0x358 (ctor exe+0x127140)
   bool is_text() const;           // text element: string at +0x40
   std::string text() const;       // caption / text, UTF-8
   bool visible() const;           // +0x28
@@ -303,7 +303,7 @@ struct WidgetB {
   bool press(void* registry, bool sound = true) const;   // sound = the registry's playSound argument (the button click)
 };
 
-// The in-world Escape menu (hudExitWindow, ctor exe+0x26e060): Return to Game / Options Menu / Exit to Main
+// The in-world Escape menu (hudExitWindow, ctor exe+0x26e200): Return to Game / Options Menu / Exit to Main
 // Menu / Quit to Desktop as TextButtons at fixed offsets, pressed through the window's own registry (+0x108).
 struct ExitWindow {
   void* p = nullptr;
@@ -329,7 +329,7 @@ int ui_visible();
 // A vendor window's market id (its marketGrid +0x2410 keeps it at +0x54; 0 outside a vendor).
 unsigned vendor_market_id(const WindowB& vendor_window);
 // The vendor window's tab map (window+0x26f8, mem::map<Market_TypeEnum, TabButton*>; read by its refresh at
-// exe+0x273120 as node+0x20 -> GetMarketInventorySack(marketId, type), node+0x28 -> the tab button whose +0x281
+// exe+0x2732c0 as node+0x20 -> GetMarketInventorySack(marketId, type), node+0x28 -> the tab button whose +0x281
 // disabled byte it sets when that sack is empty). index = which of the five tab buttons (+0x550 +0x888 +0xbc0
 // +0xef8 +0x1230, the master table's marketTab1..5Button). The faction vendor is the same class with its own
 // master table: tabs 1-4 are the reputation tiers (tagFactionVendorTab01A..04A), tab 5 is Buyback.
@@ -338,10 +338,10 @@ std::vector<VendorTab> vendor_tabs(const WindowB& vendor_window);
 int vendor_selected_type(const WindowB& vendor_window);   // window+0x25e0: the Market_TypeEnum of the tab the game shows
 // ---- the caravan (stash) window: two panels, private stash (+0x13c8) and transfer (+0x13d0); each keeps its record's
 // tab cost array at +0x378 (InventoryCostArray / TransferPageCostArray: the price of tab N is costs[N-1], the first is
-// free) and its tab-list object at +0x98. The exe's buy handlers (exe+0x131150 / +0x1316d0) are: money >= cost, fewer
+// free) and its tab-list object at +0x98. The exe's buy handlers (exe+0x1312b0 / +0x1316d0) are: money >= cost, fewer
 // sacks than N, SubtractMoney, Player::AddSack / GameEngine::AddTransferSack, then rebuild the tab list from the sack
-// vector (exe+0x25d890) and re-apply the sack dims (exe+0x12ec70). caravan_refresh does those two by RVA. ----
-// The HUD's screen rectangles, from the values InGameUI::Init (exe+0x213840) copies out of its positioning windows
+// vector (exe+0x25da20) and re-apply the sack dims (exe+0x12edd0). caravan_refresh does those two by RVA. ----
+// The HUD's screen rectangles, from the values InGameUI::Init (exe+0x2139d0) copies out of its positioning windows
 // after their records place them (hudwindow_toolbar / _portraitandstatus / _compass: 1024-wide, Center/Bottom):
 // InGameUI+0xb748 the toolbar {x,y,w,h}, +0xb758 the portrait/status strip {x,y,w,h}, +0xb768 the HUD block's
 // top-left point. Measured live 2026-09-04 at 1600x900: toolbar (398,854,805,46), status (441.7,815.2,716.7,38.5),
@@ -390,7 +390,7 @@ bool devotion_set_star_host(void* star, unsigned host_id);        // Star+0x10c
 // AffinityType (read off the exe's record parser): 0 Ascendant, 1 Chaos, 2 Eldritch, 3 Order, 4 Primordial.
 constexpr int kAffinityCount = 5;
 
-// The NPC conversation window (allocated on demand, pointer at InGameUI+0x8efd0; ctor exe+0x16e9a0): the
+// The NPC conversation window (allocated on demand, pointer at InGameUI+0x8efd0; ctor exe+0x16eb10): the
 // speaker and speech text, and the response rows, each carrying its display text and the step it selects
 // (null = end conversation). Choosing a row goes through the game's own click path (the step's quest
 // actions run there): a click at the row's own rectangle.
@@ -416,7 +416,7 @@ std::string conv_elements_dump();  // dev: the vtables/texts of the window's spe
 std::string peek(uintptr_t ptr, int n);
 bool peek_u32(const void* p, unsigned& out);   // one guarded dword read (a widget field such as the shrine window's object id)  // dev: hex dump of n bytes (qwords that point into the exe are annotated)
 
-// ---- tutorial tips / notifications: the tip manager at [main_obj+0xbe0] (ctor exe+0x1087f0) ----
+// ---- tutorial tips / notifications: the tip manager at [main_obj+0xbe0] (ctor exe+0x108860) ----
 // A tip is a heap struct holding its already-localized, line-split text (line 0 is the title); kind 1 =
 // tutorial tip; state 0 fading in, 1 shown, 2 fading out, 3 dismissed (what a right click sets).
 struct Tip {

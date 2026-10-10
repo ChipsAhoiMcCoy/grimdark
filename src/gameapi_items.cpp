@@ -22,6 +22,7 @@ struct Api {
   bool (*Inv_RemoveItem)(void*, unsigned, bool) = nullptr;
   bool (*Inv_AddItem)(void*, unsigned, bool, bool) = nullptr;
   bool (*Inv_IsSpaceAvailable)(const void*, const void*) = nullptr;
+  bool (*Inv_IsSpaceAvailable2)(const void*, const void*, const void*) = nullptr;   // room for two items at once (a two-hander's swap)
   const void* (*Sack_GetInventory)(const void*) = nullptr;
   unsigned (*Sack_GetGridWidth)(const void*) = nullptr;
   unsigned (*Sack_GetGridHeight)(const void*) = nullptr;
@@ -87,6 +88,9 @@ struct Api {
   bool (*Item_AreRequirementsMet)(const void*, const void*) = nullptr;
   MsvcStringW* (*Item_GetGameDescription)(const void*, MsvcStringW*, bool, bool) = nullptr;
   const void* (*ItemEquipment_GetStaticClassInfo)() = nullptr;
+  const void* (*Weapon_GetStaticClassInfo)() = nullptr;
+  bool (*Weapon_IsTwoHanded)(const void*) = nullptr;              // weapon type 8..9 (two-handed ranged); only after the is-a Weapon check
+  bool (*Weapon_IsTwoHandedMeleeWeapon)(const void*) = nullptr;   // weapon type 15..18 (two-handed melee); same
   const void* (*OneShot_GetStaticClassInfo)() = nullptr;    // potions, scrolls, food, dyes, sacks: the things UseItem consumes
   const void* (*ItemArtifactFormula_GetStaticClassInfo)() = nullptr;   // blueprints: UseItem learns them (or refuses a known one)
   const void* (*ItemFactionBooster_GetStaticClassInfo)() = nullptr;    // mandates / writs
@@ -121,6 +125,7 @@ struct Api {
 int g_s_ui = -1, g_s_simple = -1, g_s_stack = -1, g_s_req = -1, g_s_desc = -1, g_s_cost = -1, g_s_class = -1;
 int g_s_lvlreq = -1, g_s_physreq = -1, g_s_cunreq = -1, g_s_spireq = -1;   // Item::Get{Level,Strength,Dexterity,Intelligence}Requirement (vt+0x528..+0x540)
 int slot_in(const void* f) { int s = vslot(g.Item_vftable, f); return s >= 0 ? s : vslot(g.Item_vftable_plain, f); }
+constexpr int kRightHand = 9, kLeftHand = 10;   // EquipmentCtrlLocation (see equipment())
 constexpr int kBagSource = 1;   // ItemSource: 1 bag, 2 private stash, 3 transfer, 4 trade, 5 station slot, 7 caravan reagents
 
 void load_items() {
@@ -135,6 +140,7 @@ void load_items() {
   GAPI_LOAD(g, Inv_RemoveItem, InvCtrl_RemoveItem);
   GAPI_LOAD(g, Inv_AddItem, InvCtrl_AddItem);
   GAPI_LOAD(g, Inv_IsSpaceAvailable, InvCtrl_IsSpaceAvailable);
+  GAPI_LOAD(g, Inv_IsSpaceAvailable2, InvCtrl_IsSpaceAvailable2);
   GAPI_LOAD(g, Sack_GetInventory, InventorySack_GetInventory);
   GAPI_LOAD(g, Sack_GetGridWidth, InventorySack_GetGridWidth);
   GAPI_LOAD(g, Sack_GetGridHeight, InventorySack_GetGridHeight);
@@ -194,6 +200,9 @@ void load_items() {
   GAPI_LOAD(g, Item_AreRequirementsMet, Item_AreRequirementsMet);
   GAPI_LOAD(g, Item_GetGameDescription, Item_GetGameDescription);
   GAPI_LOAD(g, ItemEquipment_GetStaticClassInfo, ItemEquipment_GetStaticClassInfo);
+  GAPI_LOAD(g, Weapon_GetStaticClassInfo, Weapon_GetStaticClassInfo);
+  GAPI_LOAD(g, Weapon_IsTwoHanded, Weapon_IsTwoHanded);
+  GAPI_LOAD(g, Weapon_IsTwoHandedMeleeWeapon, Weapon_IsTwoHandedMeleeWeapon);
   GAPI_LOAD(g, OneShot_GetStaticClassInfo, OneShot_GetStaticClassInfo);
   GAPI_LOAD(g, ItemArtifactFormula_GetStaticClassInfo, ItemArtifactFormula_GetStaticClassInfo);
   GAPI_LOAD(g, ItemFactionBooster_GetStaticClassInfo, ItemFactionBooster_GetStaticClassInfo);
@@ -585,10 +594,38 @@ std::vector<std::string> shrine_offerings(unsigned shrine_id) {
 unsigned money() { void* p = player(); unsigned m = 0; load_items(); if (p && g.GetCurrentMoney) guarded("GetCurrentMoney", [&] { m = g.GetCurrentMoney(p); }); return m; }
 bool dev_add_money(unsigned bits) { void* p = player(); load_items(); if (!p || !g.AddMoney) return false; bool ok = guarded("AddMoney", [&] { g.AddMoney(p, bits); }); log::writef("gameapi: dev add money {} ok={}", bits, ok); return ok; }
 
-// The bag's right-click (exe+0x1eb1a0): a consumable goes through PlayerInventoryCtrl::UseItem(id, bag);
-// equipment through SmartAutoInsert + removal from the bag + re-homing whatever got displaced (exe+0x1eb4c6).
-bool use_item(unsigned id, int source) {
+// Despite its name Weapon::IsTwoHanded covers only the two-handed ranged weapon types; the melee ones are separate.
+static bool is_two_handed(const void* item) {
+  bool yes = false;
+  if (item && g.Weapon_GetStaticClassInfo && g.Weapon_IsTwoHanded && g.Weapon_IsTwoHandedMeleeWeapon)
+    guarded("Weapon::IsTwoHanded", [&] {
+      yes = world::object_is_a(item, g.Weapon_GetStaticClassInfo()) && (g.Weapon_IsTwoHanded(item) || g.Weapon_IsTwoHandedMeleeWeapon(item));
+    });
+  return yes;
+}
+// The exe's two-hander swap over a weapon and an off-hand (exe+0x1eb71e): room for both, both into the bag, detach
+// the off-hand, PlaceItem(RightHand, new) -- which detaches the weapon itself. Without room for both the exe holds one
+// on the cursor (we have none) or refuses; we refuse. right_id may be 0 (an off-hand alone). Runs inside a guard.
+static bool swap_in_two_hander(void* ic, void* ec, unsigned id, unsigned right_id, unsigned left_id, bool* no_room) {
+  void* right = right_id ? object_by_id(right_id) : nullptr; void* left = object_by_id(left_id);
+  if ((right_id && !right) || !left || !g.Inv_RemoveItem || !g.Inv_AddItem || !g.Equip_RemoveItem || !g.Equip_PlaceItem) return false;
+  g.Inv_RemoveItem(ic, id, true);   // first, as the exe does: its cells count as room
+  const bool room = right ? g.Inv_IsSpaceAvailable2 && g.Inv_IsSpaceAvailable2(ic, right, left) : g.Inv_IsSpaceAvailable && g.Inv_IsSpaceAvailable(ic, left);
+  if (!room) { g.Inv_AddItem(ic, id, true, false); if (no_room) *no_room = true; return false; }   // the exe's refusal puts it back too
+  if (right_id) g.Inv_AddItem(ic, right_id, true, false);
+  g.Inv_AddItem(ic, left_id, true, false);
+  g.Equip_RemoveItem(ec, left_id);
+  g.Equip_PlaceItem(ec, kRightHand, id, false, false);
+  return true;
+}
+// The bag's right-click (exe+0x1eb310): a consumable goes through PlayerInventoryCtrl::UseItem(id, bag);
+// equipment through SmartAutoInsert + removal from the bag + re-homing whatever got displaced (exe+0x1eb636).
+// SmartAutoInsert places the item itself only when it displaces at most one; for a two-hander over a weapon AND
+// an off-hand it lists both and returns true WITHOUT placing anything (Game.dll+0x277090), leaving the swap to the
+// caller (swap_in_two_hander). Trusting its true lost the two-hander and doubled the old pair (tester, 2026-10-05).
+bool use_item(unsigned id, int source, bool* no_room) {
   void* ic = inv_ctrl(); void* ec = equip_ctrl();
+  if (no_room) *no_room = false;
   if (!ic || !id) return false;
   void* item = object_by_id(id);
   bool ok = false, equipped = false;
@@ -597,8 +634,10 @@ bool use_item(unsigned id, int source) {
     guarded("equip (SmartAutoInsert)", [&] {
       if (!g.Equip_SmartAutoInsert(ec, id, displaced.vec(), false)) return;
       equipped = true;
+      std::vector<unsigned> out = displaced.take("SmartAutoInsert");
+      if (out.size() >= 2) { ok = swap_in_two_hander(ic, ec, id, out[0], out[1], no_room); return; }   // nothing has moved yet
       g.Inv_RemoveItem(ic, id, true);
-      for (unsigned d : displaced.take("SmartAutoInsert")) if (d) g.Inv_AddItem(ic, d, true, false);
+      for (unsigned d : out) if (d) g.Inv_AddItem(ic, d, true, false);
       ok = true;
     });
   }
@@ -654,7 +693,7 @@ bool attach_component(unsigned component_id, unsigned target_id, int source) {
   log::writef("gameapi: attach component {} -> item {} source {} ok={}", component_id, target_id, source, ok);
   return ok;
 }
-// A bag item to the ground at the character's feet, as the game drops the item on the cursor (exe+0x1ed6b8): the
+// A bag item to the ground at the character's feet, as the game drops the item on the cursor (exe+0x1ed828): the
 // cursor pickup only took it out of the bag grid (no command; the exe's only SendRemoveItemFromInventory callers are
 // destroy, reagents and the market), and the drop is ControllerCharacter::SendDropItemRandom, which creates the world
 // copy at a random spot beside the character and sends the character its RemoveInventoryItemConfigCmd. So: the grid
@@ -673,7 +712,7 @@ bool drop_item(unsigned id) {
   log::writef("gameapi: drop {} ok={}", id, ok);
   return ok;
 }
-// Unequip into the bag, in the exe's order (exe+0x1eb7f1): room check, AddItem to the bag, then the slot's
+// Unequip into the bag, in the exe's order (exe+0x1eb961): room check, AddItem to the bag, then the slot's
 // RemoveItem (which only detaches -- on its own it orphans the item).
 bool unequip(int loc) {
   void* ec = equip_ctrl(); void* ic = inv_ctrl();
@@ -691,14 +730,29 @@ bool unequip(int loc) {
   log::writef("gameapi: unequip loc {} ok={}", loc, ok);
   return ok;
 }
-// Equip into a specific slot: validate, take it out of the bag, place, and re-home the displaced item.
-bool equip(unsigned id, int loc) {
+// Equip into a specific slot: validate, take it out of the bag, place, and re-home the displaced item. PlaceItem
+// displaces only its own slot, so a two-hander over an off-hand goes through the exe's swap (else the off-hand
+// stays in the left hand beside it), and the displaced item's room is checked first (a failed AddItem orphans it).
+bool equip(unsigned id, int loc, bool* no_room) {
   void* ec = equip_ctrl(); void* ic = inv_ctrl();
-  if (!ec || !ic || !g.Equip_PlaceItem || !id) return false;
+  if (no_room) *no_room = false;
+  if (!ec || !ic || !g.Equip_PlaceItem || !g.Equip_GetItemId || !id) return false;
   bool ok = false;
   guarded("equip into slot", [&] {
     if (g.Equip_CanItemBePlaced && !g.Equip_CanItemBePlaced(ec, loc, id)) return;
-    if (g.Inv_RemoveItem) g.Inv_RemoveItem(ic, id, true);
+    if ((loc == kRightHand || loc == kLeftHand) && is_two_handed(object_by_id(id))) {
+      unsigned right = g.Equip_GetItemId(ec, kRightHand), left = g.Equip_GetItemId(ec, kLeftHand);
+      if (left && left != right) { ok = swap_in_two_hander(ic, ec, id, right, left, no_room); return; }
+      loc = kRightHand;
+    }
+    unsigned cur = g.Equip_GetItemId(ec, loc);
+    void* cur_item = cur && cur != id ? object_by_id(cur) : nullptr;
+    if (g.Inv_RemoveItem) g.Inv_RemoveItem(ic, id, true);   // before the room check: its cells count
+    if (cur_item && g.Inv_IsSpaceAvailable && !g.Inv_IsSpaceAvailable(ic, cur_item)) {
+      if (g.Inv_AddItem) g.Inv_AddItem(ic, id, true, false);
+      if (no_room) *no_room = true;
+      return;
+    }
     unsigned old = g.Equip_PlaceItem(ec, loc, id, false, false);
     if (old && g.Inv_AddItem) g.Inv_AddItem(ic, old, true, false);
     ok = true;
@@ -769,9 +823,9 @@ TradeView trade_view() {
   v.theirs = read_sack(his_sack, 1).items;
   return v;
 }
-// The trade grid's own pick-up (exe+0x25e5a0..0x25e652): the item goes onto the cursor and HandleRemoveItemOutbound
+// The trade grid's own pick-up (exe+0x25e730..0x25e652): the item goes onto the cursor and HandleRemoveItemOutbound
 // takes it out of the offer (and clears both accepts). With no cursor, the item is given back the way the game returns
-// any detached item (exe+0x1ae9b0): ControllerPlayer::GiveItemToPlayer, or SendDropItemRandom at your feet when the
+// any detached item (exe+0x1aeb20): ControllerPlayer::GiveItemToPlayer, or SendDropItemRandom at your feet when the
 // bags are full.
 bool trade_take_back(unsigned id) {
   load_items();
@@ -788,7 +842,7 @@ bool trade_take_back(unsigned id) {
   log::writef("gameapi: trade take back {} -> {}", id, back ? "bag" : "dropped at feet");
   return true;
 }
-// The item's own trade gate, as the bag's shift-click asks it before the add (exe+0x1eaf10: the item object's virtual
+// The item's own trade gate, as the bag's shift-click asks it before the add (exe+0x1eb080: the item object's virtual
 // +0x408; refused -> the game's tagTransferStashError).
 bool trade_item_allowed(unsigned id) {
   void* item = object_by_id(id);
@@ -804,8 +858,8 @@ std::string vendor_dump(unsigned id) {
   void* e = engine(); load_items();
   std::string out;
   if (!e) return "no engine\n";
-  out += "market map (GameEngine+0x40e0) keys:";
-  for (void* n : map_nodes((const char*)e + 0x40e0, 64))
+  out += "market map (GameEngine+0x40f8, 1.3.1.1; was +0x40e0) keys:";
+  for (void* n : map_nodes((const char*)e + 0x40f8, 64))
     out += std::format(" {}->{}", rd_or<unsigned>(n, 0x20, 0), rdp(n, 0x28));
   out += "\n";
   if (id) {
@@ -901,7 +955,7 @@ bool buy(unsigned market_id, unsigned item_id) {
   log::writef("gameapi: buy {} from {} -> {}", item_id, market_id, r);
   return r;
 }
-// The bag's right-click at a vendor (exe+0x1eb226): PlayerSaleRequest, then the item leaves the bag.
+// The bag's right-click at a vendor (exe+0x1eb396): PlayerSaleRequest, then the item leaves the bag.
 bool sell(unsigned market_id, unsigned item_id) {
   void* e = engine(); void* ic = inv_ctrl(); void* c = controller();
   if (!e || !ic || !c || !g.PlayerSaleRequest || !g.Inv_RemoveItem || !g.SendRemoveItemFromInventory) return false;
@@ -914,7 +968,7 @@ bool sell(unsigned market_id, unsigned item_id) {
   log::writef("gameapi: sell {} to {} -> {}", item_id, market_id, r);
   return r;
 }
-// Part of a stack. The exe's stack-split window's OK (exe+0x1dcb70, read 2026-08-26) clones the item from a
+// Part of a stack. The exe's stack-split window's OK (exe+0x1dcce0, read 2026-08-26) clones the item from a
 // copy of its ItemReplicaInfo (inline at Item+0x538, 0x190 bytes: +0 = object id, 0 = allocate a fresh one;
 // +0x178 = count) with the static Item::CreateItem, tells the character about it (SendAddItemToInventory --
 // the cursor's only lasting effect; the clone is NOT placed in the bag grid: PlayerInventoryCtrl::AddItem
@@ -955,6 +1009,44 @@ unsigned split_stack(unsigned item_id, unsigned count) {
   log::writef("gameapi: split_stack {} x{} of {} -> clone {}", item_id, count, orig, new_id);
   return new_id;
 }
+// Dev: a fresh item of any record, for testing (a two-hander on a new character). Same CreateItem path as
+// split_stack, from a copy of the right-hand weapon's replica with the record string (+0x08, an MSVC std::string
+// that CreateItem only reads) pointed at ours and the prefix/suffix strings (+0x28, +0x48) emptied.
+unsigned dev_spawn_item(const std::string& record) {
+  load_items();
+  void* ec = equip_ctrl();
+  if (!ec || !g.Equip_GetItemId || !g.Item_CreateItem || record.empty()) return 0;
+  unsigned tmpl_id = 0;
+  guarded("spawn template", [&] { tmpl_id = g.Equip_GetItemId(ec, kRightHand); });
+  void* tmpl = object_by_id(tmpl_id);
+  unsigned replica_id = 0;
+  if (!tmpl || !read_mem((const char*)tmpl + kReplicaOff, &replica_id, sizeof replica_id) || replica_id != tmpl_id) return 0;
+  alignas(8) unsigned char info[kReplicaSize];
+  if (!read_mem((const char*)tmpl + kReplicaOff, info, kReplicaSize)) return 0;
+  MsvcStringA old{}; std::memcpy(&old, info + 0x08, sizeof old);
+  char head[9] = {};
+  if (old.size < 8 || !read_mem(old.data() == old.u.buf ? (const void*)(info + 0x08) : (const void*)old.u.ptr, head, 8) || std::string_view(head) != "records/") {
+    log::writef("gameapi: dev spawn: the replica's +0x08 is not a record path (layout changed?)");
+    return 0;
+  }
+  std::string rec = record;
+  rec.reserve(16);   // heap form: the string's own buffer outlives the call
+  auto set_str = [&](size_t off, const std::string* s) {
+    MsvcStringA v{};
+    if (s) { v.u.ptr = const_cast<char*>(s->c_str()); v.size = s->size(); v.capacity = s->capacity(); }
+    else v.capacity = 15;
+    std::memcpy(info + off, &v, sizeof v);
+  };
+  set_str(0x08, &rec); set_str(0x28, nullptr); set_str(0x48, nullptr);
+  *(unsigned*)(info + 0) = 0;
+  *(unsigned*)(info + kReplicaCountOff) = 1;
+  unsigned new_id = 0;
+  guarded("spawn item", [&] { void* fresh = g.Item_CreateItem(info); if (fresh) new_id = object_id(fresh); });
+  invalidate_objects();
+  bool given = new_id && give_item_to_player(new_id);
+  log::writef("gameapi: dev spawn '{}' -> {} given={}", record, new_id, given);
+  return given ? new_id : 0;
+}
 // The clone of split_stack is not in the bag grid: only the sale request and the character-side removal.
 bool sell_split(unsigned market_id, unsigned item_id) {
   void* e = engine(); void* c = controller();
@@ -994,7 +1086,7 @@ std::vector<Bag> stash_sacks() {
   if (e && g.GetPlayerTransfer) guarded("GetPlayerTransfer", [&] { std::vector<void*> sacks = vec_items<void*>(g.GetPlayerTransfer(e), 16); for (size_t i = 0; i < sacks.size(); ++i) out.push_back(read_sack(sacks[i], 100 + (int)i)); });
   return out;
 }
-// The stash grid's shift-click (exe+0x12f062): out of the stash, into the bag, and the controller told.
+// The stash grid's shift-click (exe+0x12f1c2): out of the stash, into the bag, and the controller told.
 bool stash_to_bag(int sack_index, unsigned item_id) {
   void* p = player(); void* e = engine(); void* ic = inv_ctrl(); void* c = controller();
   if (!p || !e || !ic || !c || !g.Inv_AddItem) return false;
@@ -1019,7 +1111,7 @@ const void* stash_sack_vector(bool shared) {
   else { if (p && g.GetPrivateStash) guarded("GetPrivateStash", [&] { v = g.GetPrivateStash(p); }); }
   return v;
 }
-// The exe's buy handler (exe+0x131150 private / +0x1316d0 transfer) minus its UI: money >= cost, SubtractMoney, then
+// The exe's buy handler (exe+0x1312b0 private / +0x1316d0 transfer) minus its UI: money >= cost, SubtractMoney, then
 // Player::AddSack / GameEngine::AddTransferSack. The caller checks the tab count and refreshes the window (exe_ui).
 bool buy_stash_sack(bool shared, unsigned cost) {
   void* p = player(); void* e = engine();
@@ -1064,7 +1156,7 @@ bool bag_to_stash_any(unsigned item_id, bool shared) {
   log::writef("gameapi: bag item {} to {} stash (any sack) ok={}", item_id, shared ? "transfer" : "private", ok);
   return ok;
 }
-// The bag's shift-click while the caravan is open (exe+0x1eaa65): into the selected stash / transfer sack.
+// The bag's shift-click while the caravan is open (exe+0x1eabd5): into the selected stash / transfer sack.
 bool bag_to_stash(unsigned item_id) {
   void* p = player(); void* e = engine(); void* ic = inv_ctrl(); void* c = controller();
   if (!p || !e || !ic || !c || !g.Inv_RemoveItem || !g.SendRemoveItemFromInventory) return false;

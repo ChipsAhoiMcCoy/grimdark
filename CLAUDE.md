@@ -4,7 +4,7 @@ Injected DLL that hooks the game's own engine exports. Design lineage: `../wotr-
 project by the same author) — see `docs/design-notes-from-wotr.md` for the decisions we carry over.
 
 ## Game facts
-- Grim Dawn v1.3.0.8 (x64), Steam build. Install: `C:\Program Files (x86)\Steam\steamapps\common\Grim Dawn`.
+- Grim Dawn v1.3.1.1 (x64), Steam build (relocated from 1.3.0.8 on 2026-10-08). Install: `C:\Program Files (x86)\Steam\steamapps\common\Grim Dawn`.
   The 64-bit game is `x64\Grim Dawn.exe`; **its working directory must be the install root** (where
   `database.arz` and the `.arc` archives live) or it starts with no data and crashes in a string compare.
 - Closed-source C++ (Titan Quest engine lineage), split into DLLs that **export named, MSVC-decorated C++
@@ -183,14 +183,20 @@ developer's screen reader. Client: `uv run tools/gd.py <cmd>` (add `--with pillo
 
 ## Game patches (quantified 2026-08-25)
 - Exports (367, by decorated name) survive a game rebuild unless a signature changes and degrade per feature;
-  Engine/Game object offsets (~30) survive unless the class changed and fail SILENTLY; the exe layer (19 RVAs + ~75
+  Engine/Game object offsets (~55 raw field offsets + mirrored layouts and ~6 hardcoded vtable slots, inventoried
+  2026-10-08) survive unless the class changed and fail SILENTLY; the exe layer (19 RVAs + ~75
   offsets in `exe_ui`, 14 byte signatures checked by `available()`) dies on ANY relink of the exe -- every menu and
   window, deterministically -- while the export-driven world layer keeps running. Since 2026-09-18 the version gate
   refuses an unknown build outright, so a patch is "the mod is off" for players, not a crash.
-- Procedure on a patch: dump the new exe (`tools/dump_exe.py`), relocate against the previous build's archive in
-  `../grim-dawn-archive/<version>-<pe-ts>/` (match the 14 signatures + the vtable ctors, emit a version-keyed RVA
-  table -- the tool does not exist yet; it needs old + new images), add the row to `src/game_versions.h`, and archive
-  the new build (`tools/archive_build.py`) once the mod works on it. Never skip archiving a build the mod works on.
+- Procedure on a patch (first run 2026-10-08, 1.3.0.8 -> 1.3.1.1; `tools/exe_reloc.py`, docs/devlog.md): launch with
+  `GRIMDARK_ANY_VERSION=1`, dump the exe (`tools/dump_exe.py`), `gen_exports.py` + `gen_names.py` (a changed hooked
+  signature fails loudly), then `uv run tools/exe_reloc.py - - --scan <every src file with exe+0x>`: functions are
+  matched by normalized body + vote propagation over .pdata, data/vtables through the refs of matched pairs, every
+  `exe+0x` evidence instruction is re-checked at its new address and every vtable slot by slot. Clean -> `--apply`
+  on the same files (rewrites constants + evidence in one pass, re-checks the byte signatures). The world layer:
+  `exe_reloc.py <old dll> <new dll> exports|xdiff <regex>|vtcmp <regex>` -- a class whose ctor is unchanged kept
+  its layout; check the hardcoded vtable slots with vtcmp. Then replace the row in `src/game_versions.h` (one build
+  at a time: the old build lives in git + the archive), test live, and archive (`tools/archive_build.py`). Never skip archiving a build the mod works on.
 
 ## Traps and lessons (details in docs/devlog.md and the doc named)
 - Pointers: never hold a `GraphNode*` or a game entity pointer across frames; hold ids (`ControlId`, object id) and
@@ -216,14 +222,16 @@ developer's screen reader. Client: `uv run tools/gd.py <cmd>` (add `--with pillo
   (merges back and is destroyed). `EquipmentCtrl::RemoveItem` only detaches: AddItem to the bag first. A by-value
   `std::string` argument is destroyed by the CALLEE (MSVC x64). The game validates skill reclaims only by greying the
   icon: `can_reclaim_skill` replicates the whole gate. `SendCreateArtifactCmd` validates nothing: press the window's
-  Combine instead.
+  Combine instead. `EquipmentCtrl::SmartAutoInsert` returns true WITHOUT placing a two-hander over weapon + off-hand
+  (two displaced ids): the caller swaps (`swap_in_two_hander`); trusting it lost the weapon.
 - Signatures / layouts: a byte signature longer than the 16-byte check buffer killed the game (`exe_ui` clamps);
   `push rdi` carries a 0x40 REX prefix in this exe. Our screen's tab and the game's window tab are independent: never
   key a read on the game's current tab (the one-class spirit guide bug). `WindowScreen::add_tabs` with no tabs throws
   and takes the game down.
 - Input: modifier state comes from the game's per-event flags, never our own down-tracking (alt-tab leaves Alt
-  "held"). Ctrl+<digit> chords must swallow the digit while Ctrl is held. Synthetic `/key` events reach the game AND
-  the mod, so dev keys cannot verify in-world Ctrl-chords or J (use `/action`, `/jkey`, `/keydown?name=enter`).
+  "held"). Ctrl+<digit> chords must swallow the digit while Ctrl is held. Synthetic `/key` events take the real keys'
+  path since 2026-10-05: the mod records them and the game sees only what the game-key filter passes, so drive the
+  mod with plain `/key` as a player would (before, a dev P also hit the game's pause and silently broke L).
   The game's key enum is NOT DIK above F10: F11 0x55, F12 0x56 (`tools/exports/keynames.txt`). A mouse-button
   transition delivered off-window is lost and the exe's held byte sticks, muting WASD (`world::mouse_key` presses
   only where there is an on-screen point). A press whose projected point lies on the HUD clicks the HUD.
@@ -302,6 +310,8 @@ developer's screen reader. Client: `uv run tools/gd.py <cmd>` (add `--with pillo
   `src/gd_names.h`; fails loudly if a pattern does not match exactly one export.
 - `tools/fow.py [character] [difficulty] [--region s] [--grid]` -- a character's saved fog of war (map.fow, every region).
 - `tools/arz.py <record-path-regex> [field-regex]` — reads `database.arz` offline (records + their fields).
+- `tools/telegraph_audit.py <monster-record-regex>` — a monster's skills per phase (follows `poolToSpawnOnDeath`), each with
+  its class and the telegraph verdict (shape / silent / UNKNOWN) from `src/telegraph.cpp`'s table. Offline.
 - `tools/stacks.py [pid|exe] [n]` — native stack dump of all threads via dbghelp; `tools/pe_survey.py`,
   `tools/dinput_hook_scan.py` — static analysis helpers; `tools/hookmon.py` — LL keyboard hook monitor.
 - Reference implementations in `reference/`: `iagd` (injected Detours hook DLL for this game, MIT) and

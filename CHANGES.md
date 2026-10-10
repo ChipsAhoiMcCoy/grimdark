@@ -1,5 +1,6 @@
 # Unreleased
 
+- The multiplayer features (the Multiplayer screen, chat, `ctrl k` players, trading) now work with Grim Dawn 1.3.1.1 (the October 8 hotfix), together with everything from release 0.5.4.
 - The Multiplayer screen now works. Choose Join Multiplayer or Host Multiplayer (`ctrl tab` switches between them), browse the list of games with the arrow keys, hear each game's players, difficulty, expansion, level range, password, hardcore, PvP, loot and ping, and press `enter` on a game to join it. The filters, your Steam friends list, the host settings and the character list are all there too.
   - Joining and hosting have not been tried yet; browsing, the filters, the host settings and switching tabs have.
 - The Multiplayer screen's tabs now work like the tabs in the game's windows: Join Multiplayer and Host Multiplayer sit on one row, and arrowing onto a tab opens it. Internet or LAN is now one choice called network, changed with `left` and `right`, at the top of each tab.
@@ -17,6 +18,19 @@
 - Fix: leaving the game with Exit to Main Menu no longer says "this screen is not supported" on the way out. If leaving takes a while, you hear "leaving the game".
 - Fix: joining a multiplayer game is no longer "this screen is not supported" while the game connects; the connecting message and a password prompt that comes after it are read.
   - Not tried in the game yet: joining needs someone else's game.
+
+# 0.5.4 (2026-10-09)
+
+- Works with Grim Dawn 1.3.1.1 (the October 8 hotfix). The previous game version is no longer supported.
+
+- Fix: `l` walks to places that sit just off the walkable ground, such as a mine or cave entrance picked from the map. Before, the game refused the walk and nothing happened.
+- Fix: skill tooltips at a spirit guide (reclaiming skill points) are the full ones again, including what the next level gives, followed by the reclaim cost.
+
+# 0.5.3 (2026-10-05)
+
+- Fix: equipping a two-handed weapon while holding a weapon and a shield no longer loses the two-handed weapon. Before, it disappeared, and the old weapon and shield showed up in your bag while still being listed in your hands. Now both go to your bag and the two-handed weapon goes in your hands, the same as in the game. This works both with `enter` in the bag and from the Right Hand slot.
+- Fix: equipping a two-handed weapon from the Right Hand slot no longer leaves your shield in the other hand.
+- If your bag can't fit what you take off, equipping now says "no room in your bags" and nothing moves. Before, the item that didn't fit could be lost.
 
 # 0.5.2 (2026-10-02)
 

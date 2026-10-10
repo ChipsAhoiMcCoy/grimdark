@@ -1269,3 +1269,96 @@ CLAUDE.md "Traps and lessons"; the mechanism docs are `docs/*.md`.
   exe+0x2600c7).
 - `screens/trade.cpp` + `gameapi::trade_view / trade_take_back / trade_item_allowed` + `exe_ui::trade_*`; two new
   signatures (exe+0x260d50, exe+0x260090). Built into build/check (the game held build/ninja's DLL); gdcore_tests pass.
+
+## 2026-10-05 -- two-handers lost on equip (tester report, reproduced and fixed live)
+- Report (0.5.2): Enter on a two-handed sword in the bag put the club + shield in the bag while the equipment still listed
+  them, and the sword was gone. Reproduced on a fresh character ("Testbot", Scrapmetal Greatsword spawned with the new
+  dev route `/inv?spawn=<record>`; `/cheat?xp=` + `/skills?attr=1` for its Physique 53).
+- Cause: `EquipmentCtrl::SmartAutoInsert` places the item itself only when it displaces at most one; for a two-hander
+  over weapon + off-hand it lists both and returns true WITHOUT placing (Game.dll+0x277090: `displaced.size() >= 2`
+  skips `PlaceItem_HandRight`). `use_item` took true as "equipped": the sword left the bag for nowhere (the object lives
+  on until the game exits -- `/inv?give=<id>` recovered it in-session) and the pair was added to the bag while still held.
+  The exe's own path (exe+0x1eb4c6..0x1eb985, read this session): bag RemoveItem(new) FIRST, then
+  `IsSpaceAvailable(a, b)` (the two-item overload); both fit -> AddItem both, `EquipmentCtrl::RemoveItem(off-hand)`,
+  `PlaceItem(RightHand, new)` (which detaches the weapon); one fits -> the other onto the cursor; none -> error sound and
+  the new item back into the bag. Ours: `swap_in_two_hander`, refusing (`kBagFull`) where the exe would use the cursor.
+- Second bug, found while testing: the equip picker's `equip(id, RightHand)` with a two-hander displaced only the right
+  hand and left the shield in the left hand beside it; putting gear back from that state lost the two-hander again.
+  Two-handed = is-a `Weapon` and (`Weapon::IsTwoHanded` -- weapon type vt+0x6b0 in 8..9, the ranged ones despite the
+  name -- or `Weapon::IsTwoHandedMeleeWeapon`, 15..18); such an equip into a hand slot takes the same swap. The
+  single-slot equip now also checks room for the displaced item (after removing the new one, as the exe does).
+- Verified live, every order from a clean state: bag Enter; club-first / shield-first back; the two-hander via the Right
+  Hand slot over club + shield; over the club alone; full bag (refused via the real screen, spoken "no room in your bags",
+  nothing moved); after dropping two items, the real Enter equips. Equipment tab reads the two-hander in both hands.
+- Dev routes added: `/inv?spawn=<record>` (a new item from a database record, via `Item::CreateItem`), `/inv?detach=<id>`, `/inv?give=<id>`.
+
+## 2026-10-05: dev keys take the player's path
+- Synthetic `/key` events used to be appended to the game's key queue unfiltered (and recorded for the mod only when
+  the game fetched them), so every dev key reached the game AND the mod. In the world that made a dev P the game's
+  pause as well as the mod's "find unexplored", and the following L walk silently did nothing -- the dev loop could
+  not reproduce a player's session. Now `GetNumKeyEvents_hook` records the frame's synthetic group for the mod once
+  per frame and serves the game only the events the game-key filter passes, exactly as for real keys.
+- Verified live in the world: P no longer pauses; N then L walks (Personal Rift, 4 away); a held W still moves the
+  character; `/key?name=1&ctrl=1` reaches the mod's quickbar read. `/action`, `/jkey` and `/keydown` remain.
+- Same day, a regression caught before release: the mod's own injected keys (the lifted Ctrl+M -> plain M for the game,
+  the conversation's Escape) share the synthetic queue, and filtering them made Ctrl+M the mod's "next loot" and never
+  the game's map. `SynthKey::player` now marks dev keys (`/key`, `/keys`, `/keydown`): only those are recorded and
+  filtered; injected keys go to the game alone. Verified live: Ctrl+M opens the map; P, N + L, W as above.
+
+## 2026-10-05: L and off-navmesh targets (Old Arkovia mine entrance)
+- Report: from Old Arkovia's riftgate, picking the Mine Entrance on the map and pressing L did nothing. Measured live on the
+  user's character: the target was right (the map marker `poi_genericmineentrance` at (-902.1, -16.3), the door at
+  (-902.7, -17.2)) and `NavManager::FindPath` found a route, but `ControllerAI::MoveTo` silently refuses a destination
+  that is off the navmesh -- by 0.1 u for the marker, 1 u for the door (inside the doorway); the mesh edge is z -16.2.
+  Every point on the mesh along the same line walked, across region boundaries too (the region-relative WorldVec3
+  hypothesis was tested and is not it). `walk_to` now snaps the floored target with `FindClosestPointOnPathMesh`
+  (8 u, as /pathprobe) before MoveTo. Verified: the marker and the door points both walk to the edge.
+- Devil's Crossing (Carlile, Sahdina from the rift or the dummies) is the other known limit: the Burrwitch Prison Gate
+  is closed until you are next to it (trigger volume), the pathfinder treats it as a wall, and MoveTo walks to the
+  nearest reachable point of its partial route instead. Not fixed.
+- Dev keys now take the player's path (`SynthKey::player`, see above); our follow statics can be read live by
+  resolving them in the PDB (dbghelp `SymEnumSymbols` on the injected grimdark.dll) and `/peek`.
+
+## 2026-10-08: game patch 1.3.0.8 -> 1.3.1.1 (Hotfix 1), first relocation
+- New build: exe 0x6ac7f680, Engine 0x6ac7f5f7, Game 0x6ac7f64b (archived as `1.3.1.1-6ac7f680`). Exports: nothing we
+  hook changed (gd_names.h regenerated byte-identical); additions are item ascension, combo charges, shadow distance,
+  `AddTimeToLive(unsigned, int)`.
+- `tools/exe_reloc.py` written for it (the plan of 2026-08-25). Normalized-body matching over .pdata (RIP/branch
+  targets masked, IAT calls by import name) gave 6215 unique identical functions; first-come propagation then picked
+  wrong twins among the many identical small functions (HandleKeyAction "moved" 0x211980 -> 0x21a880), so propagation
+  is a vote fixpoint (identical pairs weight 10, changed pairs 1, vtable slots 10, identical body preferred) plus a
+  local similarity fallback at the neighbours' delta: 7995 matched. Leaves without unwind data (thunks) map by a
+  24-byte match, disambiguated by the neighbours' delta. Vtables without RTTI locators run together, so the slot check
+  is bounded by the next referenced data object.
+- Result: all 197 exe constants/evidence addresses map; functions moved ~+0x170..+0x1a0, vtables ~+0x38..+0x48, but
+  framework B's title/number text vtables were REORDERED (0x31c2b0 -> 0x31c468, 0x31c4d0 -> 0x31c3a8; verified slot by
+  slot). InGameUI::HandleKeyAction is the one changed function: only its inline switch tables differ (index table
+  byte-identical, targets uniformly +0x170), so the action ids hold. The 18 signatures match at the new RVAs.
+- World layer: ctors of Character, Player, ControllerPlayer, Item, ItemEquipment, Skill, SkillManager, CombatManager,
+  Npc, Destructible, Engine, Entity, Region, World, WorldCamera, GameCamera, HotSlotOptionSkill are unchanged.
+  Changed layouts: GameEngine (grew at ~+0x3e48 and ~+0x36c00; our market map +0x40e0 -> +0x40f8, dev only), SkillBuff
+  (+0x10 from 0x5e4; the buff-self subclasses follow; we read no raw SkillBuff field), Pet (new member +0x53b0).
+  vtcmp: Skill, Character, Player, Monster, HotSlotOption(Skill) slot-identical (Pet only overrides the new
+  GetDefenseAttributeCap); the ??_7 exports of the Item family are one folded table and say nothing (Item+0x4c8 is
+  self-checked at runtime against the exported GetDefenseAttributes overrides).
+- Live (dev character, Devil's Crossing): gate accepts 1.3.1.1, `exe_ui` layout ok, main menu + character picker +
+  Start, vitals, NPC review, inventory and skills windows through HandleKeyAction. Not verified: synthetic Ctrl+C did
+  not open the inventory and Tab from a window's column back to its tab row did nothing (navigator side, not game
+  data; may predate the patch -- needs real keys).
+
+## 2026-10-10: Multiplayer branch merged with upstream 0.5.4 (game 1.3.1.1) and relocated
+- Merged upstream/main (0.5.3, 0.5.4, the 1.3.0.8 -> 1.3.1.1 relocation) into the Multiplayer branch. Conflicts were the
+  exe_ui constant blocks, the signature table, `use_item`'s new `no_room`, CHANGES and this log; both sides kept.
+- The branch's own exe constants (kAppVt, kRowListA, the multiplayer / joining / connecting / progress / password layer
+  vtables, the trade and chat vtables, trade quick add, 4 signatures, ~70 evidence addresses) were still 1.3.0.8 values:
+  relocated with `tools/exe_reloc.py` from the branch's pre-merge files (old dump `build/GrimDawn.1.3.0.8-6a85fbec.unpacked.bin`,
+  new dump from the live game), then only the branch's own added lines were transplanted into the merged files so
+  upstream's already-relocated lines were not relocated twice. Every value both sides share came out equal to upstream's
+  relocation; all vtables 0 slot disagreements; all functions identical after normalization. No stale old address remains.
+- gd_names.h regenerated byte-identical against the 1.3.1.1 export listings (every multiplayer export still resolves). The
+  chat record layout and the item trade gate slot (+0x408) are read by exe functions that are unchanged; the 14-unit reach
+  constant is still 14.0 (exe+0x31eab0). GameEngine grew in this patch, but the branch reads it only through exports.
+- Live (unfocused, muted): before relocation the layout check failed on the two trade signatures ("menus will not be
+  read"); after it, `layout=ok`, the main menu, the Multiplayer screen's progress popup, the Join tab, the network combo
+  and the live server list (83 games) all read. Joining, hosting, chat, trade and the players overlay not re-tried.
+- tools/inject.ps1 now calls `uv` to find the game; without uv pass `-GameExe "<install>d\Grim Dawn.exe"`.

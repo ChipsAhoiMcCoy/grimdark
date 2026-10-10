@@ -1,5 +1,5 @@
 // The chat box while it is open for typing (Ctrl+Enter in the world, or the players overlay's Whisper). The game's
-// own edit box has the keyboard: every key passes through to it -- Enter sends (the game's submit, exe+0x162b20),
+// own edit box has the keyboard: every key passes through to it -- Enter sends (the game's submit, exe+0x162c90),
 // Escape closes -- except Up / Down, which review the chat history (src/chat.cpp) without leaving the box. Typed
 // characters are echoed and Backspace reads back what is left, as in the menus' edit fields (screens/edit_field.h).
 #include "screens/chat_box.h"

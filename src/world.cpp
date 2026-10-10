@@ -1400,7 +1400,7 @@ float free_distance_ray(float dir_x, float dir_z, float lateral, float max_dist,
 // leaves the shape. h0 = 1.5 is the rectangle half-width the DC corner case established (a slide 1.2 u sideways
 // round a corner is still "this way").
 namespace {
-constexpr float kWasdLookAhead = 1.25f;    // exe+0x2c69f [exe+0x31e9cc]
+constexpr float kWasdLookAhead = 1.25f;    // exe+0x2c69f [exe+0x31e9e4]
 constexpr float kPlayerSnapRadius = 10.0f; // Game+0x7771bc
 constexpr float kDetourMinLen = 15.0f;     // Game+0x7771c8
 constexpr size_t kPlayerDetourRatioOffset = 0x4bf0;   // Player::FindPath reads it (Game+0x3ba3dc)
@@ -2816,12 +2816,20 @@ bool seh_move_to(void* ctrl, void* character, const void* wv) {
   } __except (EXCEPTION_EXECUTE_HANDLER) { return false; }
 }
 }
+constexpr float kWalkSnapRadius = 8.0f;   // as /pathprobe's default
 bool walk_to(const Vec3& point) {
   void* p = player();
   if (!p || !g_controller || !g_api.ControllerAI_MoveTo || !g_api.GetRunSpeed) return false;
   Buf wv{};
   if (!world_vec3_at(point, wv.b)) return false;
   if (g_api.WorldVec3_PutOnFloor) g_api.WorldVec3_PutOnFloor(&wv);
+  // MoveTo silently refuses a destination off the navmesh, even by 0.1 u: a mine entrance's map marker and its door
+  // both sit just past the walkable floor, so "pick it, L" did nothing (Old Arkovia, 2026-10-05). Snap it on first.
+  void* nav = g_api.NavManager_Get ? g_api.NavManager_Get() : nullptr;
+  if (nav && g_api.FindClosestPointOnPathMesh) {
+    Buf on = wv;
+    if (seh_closest_on_mesh(nav, &wv, &on, kWalkSnapRadius) == 1) wv = on;   // 1 = found; 2 leaves `on` garbage
+  }
   if (!seh_move_to(g_controller, p, wv.b)) { log::write("world: ControllerAI::MoveTo faulted"); return false; }
   log::writef("walk: to {}", wv_text(wv.b));
   return true;

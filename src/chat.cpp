@@ -26,7 +26,7 @@ std::atomic<uint64_t> g_lines{0}, g_calls{0};
 
 // GAME::ChatMessage (GameEngine::AddChatMessage builds it at exe-side push_back Game.dll+0x2e7200, stride 0x50):
 // +0x00 u16 sender name, +0x20 u16 text, +0x40 u8 type, +0x48 Entity* (the speech bubble's owner, may be null).
-// Type (the window's colour switch at exe+0x16460e and the send paths at exe+0x162b20): 0 = everyone, 1 = the party
+// Type (the window's colour switch at exe+0x16477e and the send paths at exe+0x162c90): 0 = everyone, 1 = the party
 // channel, 2 = a whisper (the window keeps its sender as the /r target).
 constexpr size_t kMsgStride = 0x50, kMsgName = 0x00, kMsgText = 0x20, kMsgType = 0x40;
 struct Raw { char16_t name[64]; char16_t text[512]; unsigned char type; };

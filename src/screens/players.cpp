@@ -60,7 +60,7 @@ void run(unsigned id, std::string name, unsigned action) {
 void open_actions(unsigned id, const std::string& name) {
   gameapi::PlayerActions a = gameapi::player_actions(id);
   std::vector<PickerItem> items;
-  // The portrait menu's order (exe+0x253f90): Remove, Inspect, Trade, Whisper, Ban; the group window's Invite first.
+  // The portrait menu's order (exe+0x254120): Remove, Inspect, Trade, Whisper, Ban; the group window's Invite first.
   if (a.invite) items.push_back({kInvite, caption(kInvite), {}});
   if (a.remove) items.push_back({kRemove, caption(kRemove), {}});
   if (a.inspect) items.push_back({kInspect, caption(kInspect), {}});
