@@ -1361,4 +1361,4 @@ CLAUDE.md "Traps and lessons"; the mechanism docs are `docs/*.md`.
 - Live (unfocused, muted): before relocation the layout check failed on the two trade signatures ("menus will not be
   read"); after it, `layout=ok`, the main menu, the Multiplayer screen's progress popup, the Join tab, the network combo
   and the live server list (83 games) all read. Joining, hosting, chat, trade and the players overlay not re-tried.
-- tools/inject.ps1 now calls `uv` to find the game; without uv pass `-GameExe "<install>d\Grim Dawn.exe"`.
+- tools/inject.ps1 now calls `uv` to find the game; without uv pass `-GameExe "<install>\x64\Grim Dawn.exe"`.
