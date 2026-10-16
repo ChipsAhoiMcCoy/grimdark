@@ -1362,3 +1362,30 @@ CLAUDE.md "Traps and lessons"; the mechanism docs are `docs/*.md`.
   read"); after it, `layout=ok`, the main menu, the Multiplayer screen's progress popup, the Join tab, the network combo
   and the live server list (83 games) all read. Joining, hosting, chat, trade and the players overlay not re-tried.
 - tools/inject.ps1 now calls `uv` to find the game; without uv pass `-GameExe "<install>\x64\Grim Dawn.exe"`.
+
+## 2026-10-16: multiplayer quirks from a tester log (password prompt, stray speech before loading, busy banners)
+- Join password prompt silent until an arrow key: joining shows "Connecting to Server ... Contacting Server..." and, for
+  a passworded game, the SAME popup turns into the prompt, so the message box screen never re-pushed and the focused
+  `message_box.text` id survived the change. The screen now watches its content (text with dots ignored, plus whether it
+  has an edit box); a change that holds for 4 frames blurs the navigator, whose next pull re-seats on the message and
+  reads it like a box that just opened.
+- "Multiplayer, friends, list, ..." read before "loading" on a join: the connecting box / the password prompt's Ok closes
+  a few frames (7 ms in the log) before app state 10, and the multiplayer screen surfaced in between. It now becomes
+  active only after 15 consecutive frames without a popup (any state; below the unsupported fallback's 30-frame
+  debounce, so the gap is silent). Checked live: main menu -> Multiplayer still reads "message, Building server list"
+  then "Multiplayer, Join Multiplayer, tab" (the unsupported screen is current, silent, for those frames).
+- "That shrine is being used by another player." never spoken: static RE (`dll_xref.py Game.dll str Busy`) shows
+  `GameEngine::EngageShrineResponse` building the tagShrineBusy / tagShrineHostActivated / tagShrineLocked banner and
+  pushing it INLINE into GameEngine+0x68 (the UINotification list: 0x20-byte entries `{int type, mem::vector<u16string>
+  lines}`, the same push helper Game.dll+0x2fbd20 the exported AddUINotification uses), so our AddUINotification hooks
+  never saw it. Every caller of that push: EngageNpcResponse (tagNpcConversationBusy), EngageContainerResponse
+  (tagTroveBusy, tagAltarBusy), EngageAltarResponse, EngageEndlessShrineResponse, PlayerExperienceRedemption (the
+  gravestone's tagGrave03 "Experience Reclaimed"), GameEngineInboundInterface::DisplayMessageRemote / DisplayWMessageRemote
+  (server messages), PartyManager::AttemptToKickFromLocalParty, the CursorHandlerItemMove drop handlers
+  (tagTransferStashError; not hooked, the mod moves items through its own calls) and one unexported InteractableHookPack
+  function. The client's inbound Engage*Response tail-jump into the GameEngine ones. `GameEngine::TakeTopNotification`
+  is the reader but nothing calls it directly, so the producers are hooked (`src/notify.cpp`): the list's back is marked
+  before the call and anything new at the back afterwards is spoken. The first real AddUINotification of a load logs
+  `notify: inline banner queue layout ok|MISMATCH` as the live check of the offsets. NOT run: needs another player.
+- Lost connection to server: the box follows the message-box design (message stop, Tab to Ok, Escape dismisses); left
+  as is.

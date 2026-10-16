@@ -184,6 +184,30 @@ inline constexpr const char* GameEngine_AddUINotification_Vec = "?AddUINotificat
 // public: void __cdecl GAME::ControllerPlayer::SetUserText(class std::basic_string<char,struct std::char_traits<char>,class std::allocator<char> > const & __ptr64,int) __ptr64
 inline constexpr const char* ControllerPlayer_SetUserText_DLL = "Game.dll";
 inline constexpr const char* ControllerPlayer_SetUserText = "?SetUserText@ControllerPlayer@GAME@@QEAAXAEBV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@H@Z";
+// public: void __cdecl GAME::GameEngine::EngageNpcResponse(unsigned int,unsigned int,bool,bool) __ptr64
+inline constexpr const char* GameEngine_EngageNpcResponse_DLL = "Game.dll";
+inline constexpr const char* GameEngine_EngageNpcResponse = "?EngageNpcResponse@GameEngine@GAME@@QEAAXII_N0@Z";
+// public: void __cdecl GAME::GameEngine::EngageShrineResponse(unsigned int,unsigned int,unsigned int) __ptr64
+inline constexpr const char* GameEngine_EngageShrineResponse_DLL = "Game.dll";
+inline constexpr const char* GameEngine_EngageShrineResponse = "?EngageShrineResponse@GameEngine@GAME@@QEAAXIII@Z";
+// public: void __cdecl GAME::GameEngine::EngageContainerResponse(unsigned int,unsigned int) __ptr64
+inline constexpr const char* GameEngine_EngageContainerResponse_DLL = "Game.dll";
+inline constexpr const char* GameEngine_EngageContainerResponse = "?EngageContainerResponse@GameEngine@GAME@@QEAAXII@Z";
+// public: void __cdecl GAME::GameEngine::EngageAltarResponse(unsigned int,unsigned int) __ptr64
+inline constexpr const char* GameEngine_EngageAltarResponse_DLL = "Game.dll";
+inline constexpr const char* GameEngine_EngageAltarResponse = "?EngageAltarResponse@GameEngine@GAME@@QEAAXII@Z";
+// public: void __cdecl GAME::GameEngine::EngageEndlessShrineResponse(unsigned int,unsigned int,unsigned int) __ptr64
+inline constexpr const char* GameEngine_EngageEndlessShrineResponse_DLL = "Game.dll";
+inline constexpr const char* GameEngine_EngageEndlessShrineResponse = "?EngageEndlessShrineResponse@GameEngine@GAME@@QEAAXIII@Z";
+// public: void __cdecl GAME::GameEngine::PlayerExperienceRedemption(unsigned int,bool) __ptr64
+inline constexpr const char* GameEngine_PlayerExperienceRedemption_DLL = "Game.dll";
+inline constexpr const char* GameEngine_PlayerExperienceRedemption = "?PlayerExperienceRedemption@GameEngine@GAME@@QEAAXI_N@Z";
+// public: virtual void __cdecl GAME::GameEngineInboundInterface::DisplayMessageRemote(unsigned int,unsigned int,bool,class std::basic_string<char,struct std::char_traits<char>,class std::allocator<char> > const & __ptr64) 
+inline constexpr const char* GameEngineInbound_DisplayMessageRemote_DLL = "Game.dll";
+inline constexpr const char* GameEngineInbound_DisplayMessageRemote = "?DisplayMessageRemote@GameEngineInboundInterface@GAME@@UEAAXII_NAEBV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@Z";
+// public: virtual void __cdecl GAME::GameEngineInboundInterface::DisplayWMessageRemote(unsigned int,bool,class std::basic_string<unsigned short,struct std::char_traits<unsigned short>,class std::allocator<unsigned short> >
+inline constexpr const char* GameEngineInbound_DisplayWMessageRemote_DLL = "Game.dll";
+inline constexpr const char* GameEngineInbound_DisplayWMessageRemote = "?DisplayWMessageRemote@GameEngineInboundInterface@GAME@@UEAAXI_NAEBV?$basic_string@GU?$char_traits@G@std@@V?$allocator@G@2@@std@@@Z";
 // public: void __cdecl GAME::PlayStats::IncrementKills(unsigned int,unsigned int,enum GAME::MonsterClassification,bool) __ptr64
 inline constexpr const char* PlayStats_IncrementKills_DLL = "Game.dll";
 inline constexpr const char* PlayStats_IncrementKills = "?IncrementKills@PlayStats@GAME@@QEAAXIIW4MonsterClassification@2@_N@Z";

@@ -18,6 +18,10 @@
 - Fix: leaving the game with Exit to Main Menu no longer says "this screen is not supported" on the way out. If leaving takes a while, you hear "leaving the game".
 - Fix: joining a multiplayer game is no longer "this screen is not supported" while the game connects; the connecting message and a password prompt that comes after it are read.
   - Not tried in the game yet: joining needs someone else's game.
+- Fix: when you join a game that needs a password, "A password is required to join this game" is read as soon as the prompt appears. Before, you heard nothing until you pressed an arrow key.
+- Fix: joining a multiplayer game no longer reads the Multiplayer screen and the control you were on just before "loading".
+- Fix: "That shrine is being used by another player" is now read, and so are the game's other messages of that kind: an NPC busy talking with another player, a chest or altar someone else is using, a shrine the host has already restored or that is locked, the experience you get back from your gravestone, messages from the server, and being removed from a party.
+  - Not tried in the game yet; most of these need another player.
 
 # 0.5.4 (2026-10-09)
 

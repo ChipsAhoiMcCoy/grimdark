@@ -160,7 +160,10 @@ box is read as a message; Escape presses its Cancel, which is the game's own (pr
 game had arrived, it went back to the main menu -- observed once, 2026-10-04). A refused join ("This game is using an
 incompatible game mode ...", Ok) and the join password prompt are read by the message box screen; the prompt adds
 "Password, edit" after the message in the same stop (Down, Enter types, Enter ends; the edit session of
-`screens/edit_field.h`), then Ok / Cancel; Escape = the last button = Cancel.
+`screens/edit_field.h`), then Ok / Cancel; Escape = the last button = Cancel. The connecting box turns into the prompt in place;
+a message box whose text (or edit box) changes is read again like a new box, focus back on the message (2026-10-16).
+The multiplayer screen itself takes over only after 15 frames with no popup, so the frames between a join's last popup
+and the loading screen say nothing.
 Joining (2026-10-05, static RE, NOT run): a join moves the app to state 7, a subclass of this screen (vtable
 exe+0x30b8a0, same members) with a connecting layer (exe+0x30b9c0) holding the ordinary popup window. The screen and its
 popups were only recognized in state 6, so everything after a join started -- the connecting box, a password prompt on

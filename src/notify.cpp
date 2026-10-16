@@ -12,6 +12,7 @@
 #include "log.h"
 #include "msvc_string.h"
 #include "speech.h"
+#include "textcap.h"
 
 namespace gd::notify {
 namespace {
@@ -77,6 +78,8 @@ int read_u16_vec(const void* vec, char16_t lines[][256], int maxlines) {
   return count;
 }
 
+void check_queue_layout(const char16_t* pushed);   // below: the inline-banner reader, checked against a real push
+
 // GameEngine::AddUINotification(Type, u16string const&, bool) -- one localized banner line.
 typedef void (*AddUINotifStr_t)(void*, int, const void*, bool);
 static AddUINotifStr_t AddUINotifStr_hook_orig;
@@ -84,7 +87,7 @@ static void AddUINotifStr_hook(void* self, int type, const void* str, bool b) {
   AddUINotifStr_hook_orig(self, type, str, b);
   ++g_banners;
   char16_t buf[256];
-  if (str && read_u16(str, buf, 256) && buf[0]) announce(log::utf8(buf));
+  if (str && read_u16(str, buf, 256) && buf[0]) { check_queue_layout(buf); announce(log::utf8(buf)); }
 }
 // GameEngine::AddUINotification(Type, mem::vector<u16string> const&, bool) -- a multi-line banner.
 typedef void (*AddUINotifVec_t)(void*, int, const void*, bool);
@@ -106,12 +109,99 @@ static void SetUserText_hook(void* self, const void* tag, int ms) {
   char t[128];
   if (tag && read_charstr(tag, t, 128) && t[0]) announce(gd::hooks::localize(t));
 }
+
+// ---- banners queued inline ----
+// Several Game.dll functions push a UINotification straight into GameEngine's list instead of calling
+// AddUINotification (the compiler inlined it): the multiplayer "busy" answers (tagShrineBusy "That shrine is being
+// used by another player.", tagNpcConversationBusy, tagTroveBusy, tagAltarBusy, tagShrineHostActivated,
+// tagShrineLocked), the gravestone's "Experience Reclaimed", remote server messages and the party kick. Static RE
+// 2026-10-16: every one ends in the same vector push (Game.dll+0x2fbd20 on gGameEngine+0x68), the exported
+// AddUINotification does the same, and GameEngine::TakeTopNotification reads it back: mem::vector of 0x20-byte
+// entries {int type, mem::vector<u16string> lines}. The exe never calls TakeTopNotification, so the consumer is no hook
+// point; each producer is hooked instead and what it left at the back of the list is spoken.
+constexpr size_t kGE_Notifications = 0x68, kNotif_Size = 0x20, kNotif_Lines = 0x08;
+void* game_engine() {
+  static void** ge = [] {
+    HMODULE m = GetModuleHandleA(gGameEngine_DLL);
+    return m ? (void**)GetProcAddress(m, gGameEngine) : nullptr;
+  }();
+  return ge ? *ge : nullptr;
+}
+// The back of the list before a producer runs, to tell its push from what was already queued.
+struct QueueMark { size_t count = 0; const char* back_entry = nullptr; const void* back_lines = nullptr; char16_t back[256] = {}; };
+bool read_mark(QueueMark& m) {
+  __try {
+    char* ge = (char*)game_engine();
+    if (!ge || bad(ge + kGE_Notifications, 0x18)) return false;
+    char* const* v = (char* const*)(ge + kGE_Notifications);   // {begin, end, cap}
+    char* begin = v[0]; char* end = v[1];
+    if (!begin || end <= begin) { m.count = 0; return true; }
+    m.count = (size_t)(end - begin) / kNotif_Size;
+    char* back = end - kNotif_Size;
+    if (bad(back, kNotif_Size)) return false;
+    m.back_entry = back;
+    char* const* lines = (char* const*)(back + kNotif_Lines);
+    m.back_lines = lines[0];
+    if (lines[0] && lines[1] > lines[0]) read_u16(lines[0], m.back, 256);
+    return true;
+  } __except (EXCEPTION_EXECUTE_HANDLER) { return false; }
+}
+QueueMark mark_queue() { QueueMark m; read_mark(m); return m; }
+void announce_pushed(const QueueMark& before) {
+  QueueMark after;
+  if (!read_mark(after) || after.count == 0) return;
+  bool same = after.count == before.count && after.back_lines == before.back_lines &&
+              std::u16string_view(after.back) == std::u16string_view(before.back);
+  if (same) return;
+  ++g_banners;
+  char16_t lines[8][256];
+  int n = read_u16_vec(after.back_entry + kNotif_Lines, lines, 8);
+  for (int i = 0; i < n; ++i) if (lines[i][0]) announce(textcap::speakable(std::u16string_view(lines[i])));
+}
+// Once per load: the list's back after a real AddUINotification must hold the line just pushed (the layout above is
+// static RE; a game patch that moved it would otherwise fail silently).
+void check_queue_layout(const char16_t* pushed) {
+  static bool done = false;
+  if (done) return;
+  done = true;
+  QueueMark m;
+  bool ok = read_mark(m) && m.count > 0 && std::u16string_view(m.back) == std::u16string_view(pushed);
+  log::writef("notify: inline banner queue layout {} (count {})", ok ? "ok" : "MISMATCH", m.count);
+}
+// One producer: its exact signature (a passthrough must forward stack arguments too), the mark, the call, the read.
+#define GD_QUEUE_HOOK(NAME, PARAMS, ARGS) \
+  typedef void (*NAME##_t) PARAMS;        \
+  static NAME##_t NAME##_hook_orig;       \
+  static void NAME##_hook PARAMS {        \
+    QueueMark m = mark_queue();           \
+    NAME##_hook_orig ARGS;                \
+    announce_pushed(m);                   \
+  }
+GD_QUEUE_HOOK(EngageNpc, (void* s, unsigned a, unsigned b, bool c, bool d), (s, a, b, c, d))
+GD_QUEUE_HOOK(EngageShrine, (void* s, unsigned a, unsigned b, unsigned c), (s, a, b, c))
+GD_QUEUE_HOOK(EngageContainer, (void* s, unsigned a, unsigned b), (s, a, b))
+GD_QUEUE_HOOK(EngageAltar, (void* s, unsigned a, unsigned b), (s, a, b))
+GD_QUEUE_HOOK(EngageEndlessShrine, (void* s, unsigned a, unsigned b, unsigned c), (s, a, b, c))
+GD_QUEUE_HOOK(XpRedemption, (void* s, unsigned a, bool b), (s, a, b))
+GD_QUEUE_HOOK(MessageRemote, (void* s, unsigned a, unsigned b, bool c, const void* d), (s, a, b, c, d))
+GD_QUEUE_HOOK(WMessageRemote, (void* s, unsigned a, bool b, const void* c), (s, a, b, c))
+GD_QUEUE_HOOK(KickFromParty, (void* s, unsigned a), (s, a))
+#undef GD_QUEUE_HOOK
 }  // namespace
 
 bool install() {
   g_hooks = {GD_HOOK(GameEngine_AddUINotification_Str, AddUINotifStr_hook),
              GD_HOOK(GameEngine_AddUINotification_Vec, AddUINotifVec_hook),
-             GD_HOOK(ControllerPlayer_SetUserText, SetUserText_hook)};
+             GD_HOOK(ControllerPlayer_SetUserText, SetUserText_hook),
+             GD_HOOK(GameEngine_EngageNpcResponse, EngageNpc_hook),
+             GD_HOOK(GameEngine_EngageShrineResponse, EngageShrine_hook),
+             GD_HOOK(GameEngine_EngageContainerResponse, EngageContainer_hook),
+             GD_HOOK(GameEngine_EngageAltarResponse, EngageAltar_hook),
+             GD_HOOK(GameEngine_EngageEndlessShrineResponse, EngageEndlessShrine_hook),
+             GD_HOOK(GameEngine_PlayerExperienceRedemption, XpRedemption_hook),
+             GD_HOOK(GameEngineInbound_DisplayMessageRemote, MessageRemote_hook),
+             GD_HOOK(GameEngineInbound_DisplayWMessageRemote, WMessageRemote_hook),
+             GD_HOOK(PartyManager_AttemptToKickFromLocalParty, KickFromParty_hook)};
   return gd::hooks::attach_hooks(g_hooks) == 0;
 }
 void remove() { gd::hooks::detach_hooks(g_hooks); }

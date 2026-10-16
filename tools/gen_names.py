@@ -72,6 +72,16 @@ ENTRIES = [
     ("GameEngine_AddUINotification_Str", "Game", r"GAME::GameEngine::AddUINotification\(enum GAME::UINotification::Type,class std::basic_string"),
     ("GameEngine_AddUINotification_Vec", "Game", r"GAME::GameEngine::AddUINotification\(enum GAME::UINotification::Type,class mem::vector"),
     ("ControllerPlayer_SetUserText", "Game", r"GAME::ControllerPlayer::SetUserText\("),
+    # Banners the game queues INLINE into GameEngine's notification list (+0x68) instead of calling AddUINotification
+    # ("That shrine is being used by another player.", src/notify.cpp): hooked to announce what they pushed.
+    ("GameEngine_EngageNpcResponse", "Game", r"GAME::GameEngine::EngageNpcResponse\("),
+    ("GameEngine_EngageShrineResponse", "Game", r"GAME::GameEngine::EngageShrineResponse\("),
+    ("GameEngine_EngageContainerResponse", "Game", r"GAME::GameEngine::EngageContainerResponse\("),
+    ("GameEngine_EngageAltarResponse", "Game", r"GAME::GameEngine::EngageAltarResponse\("),
+    ("GameEngine_EngageEndlessShrineResponse", "Game", r"GAME::GameEngine::EngageEndlessShrineResponse\("),
+    ("GameEngine_PlayerExperienceRedemption", "Game", r"GAME::GameEngine::PlayerExperienceRedemption\("),
+    ("GameEngineInbound_DisplayMessageRemote", "Game", r"GAME::GameEngineInboundInterface::DisplayMessageRemote\("),
+    ("GameEngineInbound_DisplayWMessageRemote", "Game", r"GAME::GameEngineInboundInterface::DisplayWMessageRemote\("),
     # Kill feedback: PlayStats::IncrementKills fires once per player-credited kill (confirmed live 2026-08-25 --
     # HandleExperienceNotification / SkillManager::OnEnemyDeath do NOT fire/credit in single-player). Args
     # (a1, a2, MonsterClassification, bool); XP is read by polling GetExperiencePoints (no XP-event hook fires).

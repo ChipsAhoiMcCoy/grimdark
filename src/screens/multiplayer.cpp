@@ -9,6 +9,7 @@
 #include "core/strings.h"
 #include "exe_ui.h"
 #include "gameapi.h"
+#include "hooks.h"
 #include "screens/controls.h"
 #include "screens/edit_field.h"
 #include "speech.h"
@@ -142,7 +143,16 @@ NodeVtablePtr count_item(std::string text) {
 class MultiplayerMenuScreen : public Screen {
  public:
   std::string_view key() const override { return "multiplayer"; }
-  bool is_active() override { return exe_ui::available() && (bool)exe_ui::multiplayer_screen() && !exe_ui::popup(); }
+  // The screen surfaces only once it has stood without a popup for a few frames: the connecting box (or the password
+  // prompt's Ok) closes a few frames BEFORE the app enters the loading state, and the screen showing in between read
+  // "Multiplayer" and the focused control ahead of "loading" (user log 2026-10-16: 7 ms). Counted in frames, below the
+  // unsupported fallback's 30-frame debounce, so the gap is silent; a real return to the screen waits ~15 frames.
+  bool is_active() override {
+    if (!exe_ui::available() || !exe_ui::multiplayer_screen() || exe_ui::popup()) { quiet_frames_ = 0; return false; }
+    uint64_t f = hooks::frame();
+    if (f != last_frame_) { last_frame_ = f; if (quiet_frames_ < kSettleFrames) ++quiet_frames_; }
+    return quiet_frames_ >= kSettleFrames;
+  }
   std::string screen_name() const override { return std::string(strings::kMultiplayerScreen); }
   int layer() const override { return 0; }
   bool captures_raw_input() const override { return edit_.active(); }
@@ -350,6 +360,9 @@ class MultiplayerMenuScreen : public Screen {
   EditSession edit_;
   Field field_ = Field::None;
   bool seat_ = false;
+  int quiet_frames_ = 0;                 // consecutive frames the screen has been up with no popup
+  uint64_t last_frame_ = 0;
+  static constexpr int kSettleFrames = 15;
   std::optional<ControlId> return_to_;   // the focused control when a popup covered the screen
 };
 
